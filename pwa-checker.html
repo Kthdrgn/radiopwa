@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Installation Checker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            margin-bottom: 30px;
+            font-size: 32px;
+        }
+        
+        .check-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid transparent;
+        }
+        
+        .check-item.pass {
+            border-left-color: #4ade80;
+        }
+        
+        .check-item.fail {
+            border-left-color: #f87171;
+        }
+        
+        .check-item.pending {
+            border-left-color: #fbbf24;
+        }
+        
+        .check-title {
+            font-weight: 700;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        
+        .check-detail {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .icon {
+            display: inline-block;
+            margin-right: 10px;
+            font-size: 24px;
+        }
+        
+        .action-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        
+        .action-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .summary {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .summary.ready {
+            border: 2px solid #4ade80;
+        }
+        
+        .summary.not-ready {
+            border: 2px solid #f87171;
+        }
+        
+        code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .loading {
+            display: inline-block;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 PWA Installation Checker</h1>
+        <p style="margin-bottom: 30px; opacity: 0.9;">
+            This page checks if your Progressive Web App meets all requirements for installation.
+        </p>
+        
+        <div id="checks"></div>
+        
+        <div id="summary" class="summary" style="display: none;">
+            <h2 id="summary-title"></h2>
+            <p id="summary-text"></p>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <a href="./index.html" class="action-button">← Back to Radio Player</a>
+            <a href="./INSTALL_TROUBLESHOOTING.md" class="action-button" download>📄 Download Troubleshooting Guide</a>
+        </div>
+    </div>
+    
+    <script>
+        const checksContainer = document.getElementById('checks');
+        const summary = document.getElementById('summary');
+        const summaryTitle = document.getElementById('summary-title');
+        const summaryText = document.getElementById('summary-text');
+        
+        const checks = [];
+        let passCount = 0;
+        let installPromptDetected = false;
+        
+        function addCheck(title, status, detail) {
+            const check = document.createElement('div');
+            check.className = `check-item ${status}`;
+            
+            const icon = status === 'pass' ? '✅' : status === 'fail' ? '❌' : '⏳';
+            
+            check.innerHTML = `
+                <div class="check-title">
+                    <span class="icon">${icon}</span>
+                    ${title}
+                </div>
+                <div class="check-detail">${detail}</div>
+            `;
+            
+            checksContainer.appendChild(check);
+            
+            if (status === 'pass') passCount++;
+        }
+        
+        // Check 1: HTTPS
+        const isHttps = location.protocol === 'https:';
+        addCheck(
+            'HTTPS Protocol',
+            isHttps ? 'pass' : 'fail',
+            isHttps 
+                ? 'Your site is served over HTTPS ✓' 
+                : 'Your site must be served over HTTPS. GitHub Pages provides this automatically.'
+        );
+        
+        // Check 2: Service Worker Support
+        const hasSW = 'serviceWorker' in navigator;
+        addCheck(
+            'Service Worker API',
+            hasSW ? 'pass' : 'fail',
+            hasSW
+                ? 'Service Worker API is supported in this browser ✓'
+                : 'This browser does not support Service Workers. Try Chrome, Edge, or Firefox.'
+        );
+        
+        // Check 3: Service Worker Registration
+        if (hasSW) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                const hasRegistration = registrations.length > 0;
+                const detail = hasRegistration
+                    ? `Found ${registrations.length} service worker(s). Scope: ${registrations[0].scope}`
+                    : 'No service worker registered. Check browser console for errors.';
+                
+                addCheck(
+                    'Service Worker Registered',
+                    hasRegistration ? 'pass' : 'fail',
+                    detail
+                );
+                
+                updateSummary();
+            });
+        }
+        
+        // Check 4: Manifest
+        fetch('./manifest.json')
+            .then(response => {
+                if (!response.ok) throw new Error('Not found');
+                return response.json();
+            })
+            .then(manifest => {
+                addCheck(
+                    'Web App Manifest',
+                    'pass',
+                    `Manifest found! App name: "${manifest.name}", Start URL: "${manifest.start_url}"`
+                );
+                
+                // Check icons
+                const hasRequiredIcons = manifest.icons && 
+                    manifest.icons.some(icon => icon.sizes === '192x192') &&
+                    manifest.icons.some(icon => icon.sizes === '512x512');
+                
+                addCheck(
+                    'Required Icons',
+                    hasRequiredIcons ? 'pass' : 'fail',
+                    hasRequiredIcons
+                        ? `Found ${manifest.icons.length} icons including required 192x192 and 512x512 sizes ✓`
+                        : 'Missing required 192x192 or 512x512 icons'
+                );
+                
+                updateSummary();
+            })
+            .catch(err => {
+                addCheck(
+                    'Web App Manifest',
+                    'fail',
+                    `Could not load manifest.json: ${err.message}. Make sure the file exists in your repository.`
+                );
+                updateSummary();
+            });
+        
+        // Check 5: Install Prompt
+        addCheck(
+            'Install Prompt',
+            'pending',
+            '<span class="loading">Waiting for beforeinstallprompt event...</span> This may take a moment.'
+        );
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            installPromptDetected = true;
+            const lastCheck = checksContainer.lastChild;
+            lastCheck.className = 'check-item pass';
+            lastCheck.innerHTML = `
+                <div class="check-title">
+                    <span class="icon">✅</span>
+                    Install Prompt
+                </div>
+                <div class="check-detail">
+                    beforeinstallprompt event detected! Your PWA can be installed. 
+                    Look for the install icon in your browser's address bar.
+                </div>
+            `;
+            passCount++;
+            updateSummary();
+        });
+        
+        // Check after 3 seconds if no prompt
+        setTimeout(() => {
+            if (!installPromptDetected) {
+                const lastCheck = checksContainer.lastChild;
+                lastCheck.className = 'check-item fail';
+                lastCheck.innerHTML = `
+                    <div class="check-title">
+                        <span class="icon">❌</span>
+                        Install Prompt
+                    </div>
+                    <div class="check-detail">
+                        No install prompt detected. Possible reasons:<br>
+                        • App was already dismissed for this browser<br>
+                        • Service worker not activated yet<br>
+                        • App doesn't meet all PWA criteria<br>
+                        <br>
+                        <strong>Try:</strong> Open in incognito/private window, or clear site data and reload.
+                    </div>
+                `;
+                updateSummary();
+            }
+        }, 3000);
+        
+        // Check 6: Viewport
+        const hasViewport = document.querySelector('meta[name="viewport"]');
+        addCheck(
+            'Responsive Viewport',
+            hasViewport ? 'pass' : 'fail',
+            hasViewport
+                ? 'Viewport meta tag is present ✓'
+                : 'Missing viewport meta tag'
+        );
+        
+        function updateSummary() {
+            summary.style.display = 'block';
+            
+            if (passCount >= 5) {
+                summary.className = 'summary ready';
+                summaryTitle.textContent = '🎉 Your PWA is Ready!';
+                summaryText.innerHTML = `
+                    All critical checks passed! Your app should be installable.<br><br>
+                    <strong>To install:</strong><br>
+                    • Desktop: Look for install icon (⊕) in address bar<br>
+                    • Mobile: Use browser menu → "Install app" or "Add to Home Screen"<br>
+                    • If no option appears, try incognito mode or a different browser
+                `;
+            } else {
+                summary.className = 'summary not-ready';
+                summaryTitle.textContent = '⚠️ Issues Detected';
+                summaryText.innerHTML = `
+                    Some checks failed. Your PWA may not be installable yet.<br><br>
+                    <strong>Next steps:</strong><br>
+                    1. Fix the failed checks above<br>
+                    2. Check browser console for detailed errors<br>
+                    3. Review the troubleshooting guide<br>
+                    4. Clear site data and reload the page
+                `;
+            }
+        }
+        
+        // Show browser info
+        setTimeout(() => {
+            const browserInfo = document.createElement('div');
+            browserInfo.className = 'check-item';
+            browserInfo.innerHTML = `
+                <div class="check-title">
+                    <span class="icon">ℹ️</span>
+                    Browser Information
+                </div>
+                <div class="check-detail">
+                    User Agent: <code>${navigator.userAgent}</code><br>
+                    Current URL: <code>${location.href}</code><br>
+                    Protocol: <code>${location.protocol}</code>
+                </div>
+            `;
+            checksContainer.appendChild(browserInfo);
+        }, 100);
+        
+    </script>
+</body>
+</html>
