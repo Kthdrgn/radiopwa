@@ -20,6 +20,11 @@
     <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-192x192.png">
     
+    <!-- CACHE CONTROL: Prevent aggressive caching of API data -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
     <!-- Load the icecast-metadata-player library from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/icecast-metadata-player@1.17.13/build/icecast-metadata-player-1.17.13.main.min.js"></script>
     
@@ -1222,7 +1227,7 @@
         // ======================
         
         // Load stations from Supabase
-        async function loadStations() {
+        async function loadStations(forceRefresh = false) {
             try {
                 const { data, error } = await supabase
                     .from('radio_stations')
@@ -1242,6 +1247,13 @@
                     renderStationList();
                 }
                 
+                // Clear service worker cache if force refresh
+                if (forceRefresh && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'CLEAR_CACHE'
+                    });
+                }
+                
             } catch (error) {
                 console.error('Error loading stations:', error);
                 updateStatus('Error loading stations', 'error');
@@ -1249,7 +1261,7 @@
         }
         
         // Load playlists from Supabase
-        async function loadPlaylists() {
+        async function loadPlaylists(forceRefresh = false) {
             try {
                 const { data, error } = await supabase
                     .from('playlists')
@@ -1260,6 +1272,13 @@
                 
                 playlists = data || [];
                 renderPlaylistsList();
+                
+                // Clear service worker cache if force refresh
+                if (forceRefresh && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'CLEAR_CACHE'
+                    });
+                }
                 
             } catch (error) {
                 console.error('Error loading playlists:', error);
@@ -1302,7 +1321,7 @@
                 }
                 
                 console.log('Playlist created successfully:', data);
-                await loadPlaylists();
+                await loadPlaylists(true); // Force refresh to bypass cache
                 alert('Playlist created successfully!');
                 return data && data.length > 0 ? data[0] : null;
                 
@@ -1331,7 +1350,7 @@
                 }
                 
                 console.log('Playlist updated successfully:', data);
-                await loadPlaylists();
+                await loadPlaylists(true); // Force refresh to bypass cache
                 alert('Playlist updated successfully!');
                 
             } catch (error) {
@@ -1357,7 +1376,7 @@
                 
                 if (error) throw error;
                 
-                await loadPlaylists();
+                await loadPlaylists(true); // Force refresh to bypass cache
                 
             } catch (error) {
                 console.error('Error deleting playlist:', error);
@@ -1387,7 +1406,7 @@
                 
                 if (error) throw error;
                 
-                await loadPlaylists();
+                await loadPlaylists(true); // Force refresh to bypass cache
                 
             } catch (error) {
                 console.error('Error adding station to playlist:', error);
@@ -1407,7 +1426,7 @@
                 if (error) throw error;
                 
                 await loadPlaylistStations(playlistId);
-                await loadPlaylists();
+                await loadPlaylists(true); // Force refresh to bypass cache
                 
             } catch (error) {
                 console.error('Error removing station from playlist:', error);
@@ -1432,7 +1451,7 @@
                 }
                 
                 console.log('Station created successfully:', data);
-                await loadStations();
+                await loadStations(true); // Force refresh to bypass cache
                 alert('Station created successfully!');
                 return data && data.length > 0 ? data[0] : null;
                 
@@ -1453,7 +1472,7 @@
                 
                 if (error) throw error;
                 
-                await loadStations();
+                await loadStations(true); // Force refresh to bypass cache
                 
             } catch (error) {
                 console.error('Error updating station:', error);
@@ -1478,8 +1497,8 @@
                 
                 if (error) throw error;
                 
-                await loadStations();
-                await loadPlaylists();
+                await loadStations(true); // Force refresh to bypass cache
+                await loadPlaylists(true); // Force refresh to bypass cache
                 
             } catch (error) {
                 console.error('Error deleting station:', error);
@@ -2570,6 +2589,13 @@
                 navigator.serviceWorker.register('./sw.js')
                     .then((registration) => {
                         console.log('ServiceWorker registered:', registration.scope);
+                        
+                        // Listen for messages from the service worker
+                        navigator.serviceWorker.addEventListener('message', (event) => {
+                            if (event.data && event.data.type === 'CACHE_CLEARED') {
+                                console.log('Service worker cache cleared successfully');
+                            }
+                        });
                         
                         // Check for updates
                         registration.addEventListener('updatefound', () => {
