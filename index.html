@@ -1470,18 +1470,30 @@
         // Update station
         async function updateStation(id, stationData) {
             try {
-                const { error } = await supabase
+                console.log('Updating station:', { id, stationData });
+                
+                const { data, error } = await supabase
                     .from('radio_stations')
                     .update(stationData)
-                    .eq('id', id);
+                    .eq('id', id)
+                    .select();
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase error:', error);
+                    console.error('Error details:', JSON.stringify(error, null, 2));
+                    throw error;
+                }
                 
+                console.log('Station updated successfully:', data);
                 await loadStations(true); // Force refresh to bypass cache
+                alert('Station updated successfully!');
                 
             } catch (error) {
                 console.error('Error updating station:', error);
-                alert('Failed to update station');
+                console.error('Error message:', error.message);
+                console.error('Error details:', error.details);
+                console.error('Error hint:', error.hint);
+                alert(`Failed to update station: ${error.message || 'Unknown error'}\n\nCheck browser console for details.`);
             }
         }
         
@@ -1615,7 +1627,13 @@
                 return;
             }
             
-            stationList.innerHTML = filteredStations.map(station => `
+            stationList.innerHTML = filteredStations.map(station => {
+                // Handle genres as array or string
+                const genresDisplay = station.genres && Array.isArray(station.genres)
+                    ? station.genres.join(', ')
+                    : (station.genres || 'No genres');
+                
+                return `
                 <div class="station-item ${currentStation?.id === station.id ? 'selected' : ''}" data-id="${station.id}">
                     ${station.icon_url ? 
                         `<img src="${station.icon_url}" class="station-icon" alt="${escapeHtml(station.name)}">` :
@@ -1623,7 +1641,7 @@
                     }
                     <div class="station-info">
                         <div class="station-name">${escapeHtml(station.name)}</div>
-                        <div class="station-genres">${escapeHtml(station.genres || 'No genres')}</div>
+                        <div class="station-genres">${escapeHtml(genresDisplay)}</div>
                     </div>
                     <button class="station-menu-btn" data-id="${station.id}">⋮</button>
                     <div class="station-dropdown">
@@ -1653,7 +1671,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
             
             // Add event listeners
             document.querySelectorAll('.station-item').forEach(item => {
@@ -1731,7 +1750,13 @@
                 return;
             }
             
-            playlistStationList.innerHTML = playlistStations.map(station => `
+            playlistStationList.innerHTML = playlistStations.map(station => {
+                // Handle genres as array or string
+                const genresDisplay = station.genres && Array.isArray(station.genres)
+                    ? station.genres.join(', ')
+                    : (station.genres || 'No genres');
+                
+                return `
                 <div class="station-item ${currentStation?.id === station.id ? 'selected' : ''}" data-id="${station.id}">
                     ${station.icon_url ? 
                         `<img src="${station.icon_url}" class="station-icon" alt="${escapeHtml(station.name)}">` :
@@ -1739,7 +1764,7 @@
                     }
                     <div class="station-info">
                         <div class="station-name">${escapeHtml(station.name)}</div>
-                        <div class="station-genres">${escapeHtml(station.genres || 'No genres')}</div>
+                        <div class="station-genres">${escapeHtml(genresDisplay)}</div>
                     </div>
                     <button class="station-menu-btn" data-id="${station.id}">⋮</button>
                     <div class="station-dropdown">
@@ -1748,7 +1773,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
             
             // Add event listeners
             document.querySelectorAll('#playlistStationList .station-item').forEach(item => {
@@ -1803,7 +1829,12 @@
             stationDisplayIcon.src = station.icon_url || '';
             stationDisplayIcon.style.display = station.icon_url ? 'block' : 'none';
             stationDisplayName.textContent = station.name;
-            stationDisplayGenres.textContent = station.genres || 'No genres';
+            
+            // Handle genres as array or string
+            const genresDisplay = station.genres && Array.isArray(station.genres)
+                ? station.genres.join(', ')
+                : (station.genres || 'No genres');
+            stationDisplayGenres.textContent = genresDisplay;
             
             // Update quality button availability
             updateQualityButtons(station);
@@ -1956,7 +1987,14 @@
                 document.getElementById('stationFormUrl').value = station.url;
                 document.getElementById('stationFormUrlLow').value = station.url_low || '';
                 document.getElementById('stationFormUrlHigh').value = station.url_high || '';
-                document.getElementById('stationFormGenres').value = station.genres || '';
+                
+                // Convert genres array to comma-separated string for display
+                // If genres is ["News", "Talk"], display as "News, Talk"
+                const genresDisplay = station.genres && Array.isArray(station.genres) 
+                    ? station.genres.join(', ') 
+                    : (station.genres || '');
+                document.getElementById('stationFormGenres').value = genresDisplay;
+                
                 document.getElementById('stationFormIconUrl').value = station.icon_url || '';
             } else {
                 stationFormTitle.textContent = 'Add Station';
@@ -1993,7 +2031,21 @@
             const lowerQuery = query.toLowerCase();
             filteredStations = stations.filter(station => {
                 const nameMatch = station.name && station.name.toLowerCase().includes(lowerQuery);
-                const genresMatch = station.genres && typeof station.genres === 'string' && station.genres.toLowerCase().includes(lowerQuery);
+                
+                // Handle genres as array or string
+                let genresMatch = false;
+                if (station.genres) {
+                    if (Array.isArray(station.genres)) {
+                        // Search in array elements
+                        genresMatch = station.genres.some(genre => 
+                            genre.toLowerCase().includes(lowerQuery)
+                        );
+                    } else if (typeof station.genres === 'string') {
+                        // Handle as string (for backward compatibility)
+                        genresMatch = station.genres.toLowerCase().includes(lowerQuery);
+                    }
+                }
+                
                 return nameMatch || genresMatch;
             });
             console.log('Filtered stations:', filteredStations.length);
@@ -2098,14 +2150,39 @@
         stationForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // Get form values
+            const name = document.getElementById('stationFormName').value.trim();
+            const url = document.getElementById('stationFormUrl').value.trim();
+            const url_low = document.getElementById('stationFormUrlLow').value.trim() || null;
+            const url_high = document.getElementById('stationFormUrlHigh').value.trim() || null;
+            const genresInput = document.getElementById('stationFormGenres').value.trim();
+            const icon_url = document.getElementById('stationFormIconUrl').value.trim() || null;
+            
+            // Validate required fields
+            if (!name || !url) {
+                alert('Station name and URL are required!');
+                return;
+            }
+            
+            // Convert genres string to array if needed
+            // If user enters "News,Talk" or "News, Talk", convert to ["News", "Talk"]
+            let genres = null;
+            if (genresInput) {
+                // Split by comma and trim whitespace from each genre
+                genres = genresInput.split(',').map(g => g.trim()).filter(g => g.length > 0);
+            }
+            
             const stationData = {
-                name: document.getElementById('stationFormName').value.trim(),
-                url: document.getElementById('stationFormUrl').value.trim(),
-                url_low: document.getElementById('stationFormUrlLow').value.trim() || null,
-                url_high: document.getElementById('stationFormUrlHigh').value.trim() || null,
-                genres: document.getElementById('stationFormGenres').value.trim() || null,
-                icon_url: document.getElementById('stationFormIconUrl').value.trim() || null
+                name: name,
+                url: url,
+                url_low: url_low,
+                url_high: url_high,
+                genres: genres, // Now an array like ["News", "Talk"] or null
+                icon_url: icon_url
             };
+            
+            console.log('Form submission - editingStationId:', editingStationId);
+            console.log('Form submission - stationData:', stationData);
             
             if (editingStationId) {
                 await updateStation(editingStationId, stationData);
