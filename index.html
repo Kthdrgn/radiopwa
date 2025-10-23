@@ -831,6 +831,12 @@
             color: white;
         }
         
+        .quality-option.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
         /* Back button */
         .back-btn {
             display: inline-flex;
@@ -968,16 +974,6 @@
                 <button class="modal-close" id="closeStationModal">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- Search -->
-                <div class="search-controls">
-                    <input 
-                        type="text" 
-                        id="stationSearch" 
-                        class="search-input" 
-                        placeholder="Search stations..."
-                    >
-                </div>
-                
                 <!-- Playlists Section -->
                 <div class="playlists-section" id="playlistsSection">
                     <div class="section-header">
@@ -987,6 +983,16 @@
                         </button>
                     </div>
                     <div class="playlists-list" id="playlistsList"></div>
+                </div>
+                
+                <!-- Search -->
+                <div class="search-controls">
+                    <input 
+                        type="text" 
+                        id="stationSearch" 
+                        class="search-input" 
+                        placeholder="Search stations..."
+                    >
                 </div>
                 
                 <!-- Stations Section -->
@@ -1142,6 +1148,7 @@
         
         let supabase;
         let player = null;
+        let isPlaying = false;
         let currentStation = null;
         let stations = [];
         let filteredStations = [];
@@ -1281,20 +1288,27 @@
         // Create playlist
         async function createPlaylist(name, description) {
             try {
+                console.log('Creating playlist with:', { name, description });
+                
                 const { data, error } = await supabase
                     .from('playlists')
                     .insert([{ name, description }])
-                    .select()
-                    .single();
+                    .select();
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase error:', error);
+                    console.error('Error details:', JSON.stringify(error, null, 2));
+                    throw error;
+                }
                 
+                console.log('Playlist created successfully:', data);
                 await loadPlaylists();
-                return data;
+                alert('Playlist created successfully!');
+                return data && data.length > 0 ? data[0] : null;
                 
             } catch (error) {
                 console.error('Error creating playlist:', error);
-                alert('Failed to create playlist');
+                alert(`Failed to create playlist: ${error.message || 'Unknown error'}\n\nCheck browser console for details.`);
                 return null;
             }
         }
@@ -1302,18 +1316,27 @@
         // Update playlist
         async function updatePlaylist(id, name, description) {
             try {
-                const { error } = await supabase
+                console.log('Updating playlist:', { id, name, description });
+                
+                const { data, error } = await supabase
                     .from('playlists')
                     .update({ name, description })
-                    .eq('id', id);
+                    .eq('id', id)
+                    .select();
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase error:', error);
+                    console.error('Error details:', JSON.stringify(error, null, 2));
+                    throw error;
+                }
                 
+                console.log('Playlist updated successfully:', data);
                 await loadPlaylists();
+                alert('Playlist updated successfully!');
                 
             } catch (error) {
                 console.error('Error updating playlist:', error);
-                alert('Failed to update playlist');
+                alert(`Failed to update playlist: ${error.message || 'Unknown error'}\n\nCheck browser console for details.`);
             }
         }
         
@@ -1395,20 +1418,27 @@
         // Create station
         async function createStation(stationData) {
             try {
+                console.log('Creating station with:', stationData);
+                
                 const { data, error } = await supabase
                     .from('radio_stations')
                     .insert([stationData])
-                    .select()
-                    .single();
+                    .select();
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase error:', error);
+                    console.error('Error details:', JSON.stringify(error, null, 2));
+                    throw error;
+                }
                 
+                console.log('Station created successfully:', data);
                 await loadStations();
-                return data;
+                alert('Station created successfully!');
+                return data && data.length > 0 ? data[0] : null;
                 
             } catch (error) {
                 console.error('Error creating station:', error);
-                alert('Failed to create station');
+                alert(`Failed to create station: ${error.message || 'Unknown error'}\n\nCheck browser console for details.`);
                 return null;
             }
         }
@@ -1751,6 +1781,9 @@
             stationDisplayName.textContent = station.name;
             stationDisplayGenres.textContent = station.genres || 'No genres';
             
+            // Update quality button availability
+            updateQualityButtons(station);
+            
             playBtn.disabled = false;
 
             // Stop current stream if playing before starting new one
@@ -1775,6 +1808,41 @@
             }, 100);
 
 
+        }
+        
+        // Update quality button availability based on station URLs
+        function updateQualityButtons(station) {
+            const lowBtn = document.querySelector('.quality-option[data-quality="low"]');
+            const standardBtn = document.querySelector('.quality-option[data-quality="standard"]');
+            const highBtn = document.querySelector('.quality-option[data-quality="high"]');
+            
+            // Enable/disable based on available URLs
+            if (station.url_low) {
+                lowBtn.classList.remove('disabled');
+            } else {
+                lowBtn.classList.add('disabled');
+                if (selectedQuality === 'low') {
+                    // Switch to standard if low was selected but not available
+                    selectedQuality = 'standard';
+                    standardBtn.classList.add('selected');
+                    lowBtn.classList.remove('selected');
+                }
+            }
+            
+            // Standard URL is always required, so always enabled
+            standardBtn.classList.remove('disabled');
+            
+            if (station.url_high) {
+                highBtn.classList.remove('disabled');
+            } else {
+                highBtn.classList.add('disabled');
+                if (selectedQuality === 'high') {
+                    // Switch to standard if high was selected but not available
+                    selectedQuality = 'standard';
+                    standardBtn.classList.add('selected');
+                    highBtn.classList.remove('selected');
+                }
+            }
         }
         
         // Open playlist
@@ -2046,9 +2114,36 @@
         // Quality selector
         document.querySelectorAll('.quality-option').forEach(option => {
             option.addEventListener('click', () => {
+                // Don't allow selecting disabled options
+                if (option.classList.contains('disabled')) {
+                    return;
+                }
+                
+                // Check if this is already selected
+                if (option.classList.contains('selected')) {
+                    return;
+                }
+                
+                const wasPlaying = isPlaying;
+                const newQuality = option.dataset.quality;
+                
                 document.querySelectorAll('.quality-option').forEach(opt => opt.classList.remove('selected'));
                 option.classList.add('selected');
-                selectedQuality = option.dataset.quality;
+                selectedQuality = newQuality;
+                
+                // If player was playing, stop and restart with new quality
+                if (wasPlaying && currentStation && player) {
+                    console.log(`Switching to ${newQuality} quality...`);
+                    updateStatus(`Switching to ${newQuality} quality...`, 'loading');
+                    
+                    // Stop the current stream
+                    player.stop();
+                    
+                    // Wait a moment for the stop to complete, then start new stream
+                    setTimeout(() => {
+                        playBtn.click();
+                    }, 200);
+                }
             });
         });
         
@@ -2065,6 +2160,15 @@
         // METADATA DISPLAY
         // ======================
         
+        // Helper function to display station icon
+        function displayStationIcon() {
+            if (currentStation && currentStation.icon_url) {
+                artworkContainer.innerHTML = `<img src="${escapeHtml(currentStation.icon_url)}" alt="${escapeHtml(currentStation.name)}" class="album-art">`;
+            } else {
+                artworkContainer.innerHTML = `<div class="album-art-placeholder">🎵</div>`;
+            }
+        }
+        
         // Display metadata
         function displayMetadata(metadata) {
             if (!metadata || !metadata.StreamTitle) {
@@ -2072,7 +2176,7 @@
                     <div class="now-playing-label">NOW PLAYING</div>
                     <div class="no-metadata">No metadata available</div>
                 `;
-                artworkContainer.innerHTML = `<div class="album-art-placeholder">🎵</div>`;
+                displayStationIcon();
                 return;
             }
             
@@ -2130,7 +2234,7 @@
         // Fetch album art from iTunes or MusicBrainz
         async function fetchAlbumArt(title, artist) {
             if (!artist || !title) {
-                artworkContainer.innerHTML = `<div class="album-art-placeholder">🎵</div>`;
+                displayStationIcon();
                 return;
             }
             
@@ -2170,7 +2274,7 @@
                             updateMediaSession(title, artist, result.collectionName || '', artUrl);
                         };
                         img.onerror = () => {
-                            artworkContainer.innerHTML = `<div class="album-art-placeholder">🎵</div>`;
+                            displayStationIcon();
                         };
                         img.src = artUrl;
                         return;
@@ -2180,7 +2284,7 @@
                 console.error('Error fetching album art from iTunes:', error);
             }
             
-            artworkContainer.innerHTML = `<div class="album-art-placeholder">🎵</div>`;
+            displayStationIcon();
             updateMediaSession(title, artist, '', null);
         }
         
@@ -2211,7 +2315,7 @@
                             updateMediaSession(title, artist, '', artUrl);
                         };
                         img.onerror = () => {
-                            artworkContainer.innerHTML = `<div class="album-art-placeholder">🎵</div>`;
+                            displayStationIcon();
                         };
                         img.src = artUrl;
                         return;
@@ -2221,7 +2325,7 @@
                 console.error('Error fetching album art from MusicBrainz:', error);
             }
             
-            artworkContainer.innerHTML = `<div class="album-art-placeholder">🎵</div>`;
+            displayStationIcon();
             updateMediaSession(title, artist, '', null);
         }
         
@@ -2356,6 +2460,7 @@
                         },
                         
                         onPlay: () => {
+                            isPlaying = true;
                             const statusMsg = attempt.metadata.length === 0 
                                 ? 'Playing (no metadata available)'
                                 : 'Playing';
@@ -2363,10 +2468,11 @@
                         },
                         
                         onStop: () => {
+                            isPlaying = false;
                             updateStatus('Stopped', 'stopped');
                             playBtn.disabled = false;
                             stopBtn.disabled = true;
-                            artworkContainer.innerHTML = `<div class="album-art-placeholder">🎵</div>`;
+                            displayStationIcon();
                             metadataDiv.innerHTML = `
                                 <div class="now-playing-label">NOW PLAYING</div>
                                 <div class="no-metadata">Select a station to start streaming</div>
@@ -2404,6 +2510,7 @@
             }
             
             console.error('All connection attempts failed');
+            isPlaying = false;
             updateStatus('Error: Unable to connect to stream. Try enabling/disabling CORS proxy.', 'error');
             playBtn.disabled = false;
             stopBtn.disabled = true;
@@ -2426,6 +2533,13 @@
         // ======================
         // INITIALIZATION
         // ======================
+        
+        // Initialize quality buttons as disabled until station is selected
+        document.querySelectorAll('.quality-option').forEach(option => {
+            if (option.dataset.quality !== 'standard') {
+                option.classList.add('disabled');
+            }
+        });
         
         // Load stations from Supabase on startup
         loadStations();
