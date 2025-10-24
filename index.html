@@ -1231,6 +1231,179 @@
         // DATABASE FUNCTIONS
         // ======================
         
+        // ======================
+        // STATION HISTORY TRACKING
+        // ======================
+        
+        // Generate a simple anonymous user ID for tracking
+        function getOrCreateUserId() {
+            let userId = localStorage.getItem('radio_user_id');
+            if (!userId) {
+                userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('radio_user_id', userId);
+            }
+            return userId;
+        }
+        
+        // Track station click in Supabase
+        async function trackStationClick(stationId) {
+            try {
+                const userId = getOrCreateUserId();
+                const { error} = await supabase
+                    .from('station_history')
+                    .insert({
+                        station_id: stationId,
+                        user_id: userId,
+                        clicked_at: new Date().toISOString()
+                    });
+                
+                if (error) {
+                    console.error('Error tracking station click:', error);
+                    trackStationClickLocal(stationId);
+                } else {
+                    console.log('Station click tracked successfully');
+                    trackStationClickLocal(stationId);
+                }
+            } catch (error) {
+                console.error('Error tracking station click:', error);
+                trackStationClickLocal(stationId);
+            }
+        }
+        
+        // Track station click in local storage (backup method)
+        function trackStationClickLocal(stationId) {
+            try {
+                let history = JSON.parse(localStorage.getItem('station_history') || '[]');
+                history.push({
+                    station_id: stationId,
+                    clicked_at: new Date().toISOString()
+                });
+                if (history.length > 500) {
+                    history = history.slice(-500);
+                }
+                localStorage.setItem('station_history', JSON.stringify(history));
+            } catch (error) {
+                console.error('Error tracking station click locally:', error);
+            }
+        }
+        
+        // Get most recent stations
+        async function getMostRecentStations(limit = 10) {
+            try {
+                const userId = getOrCreateUserId();
+                
+                const { data, error } = await supabase
+                    .from('station_history')
+                    .select('station_id, clicked_at')
+                    .eq('user_id', userId)
+                    .order('clicked_at', { ascending: false })
+                    .limit(limit * 3);
+                
+                if (error) throw error;
+                
+                const uniqueStationIds = [];
+                const seenIds = new Set();
+                
+                for (const record of data) {
+                    if (!seenIds.has(record.station_id)) {
+                        seenIds.add(record.station_id);
+                        uniqueStationIds.push(record.station_id);
+                        if (uniqueStationIds.length >= limit) break;
+                    }
+                }
+                
+                return stations.filter(s => uniqueStationIds.includes(s.id))
+                    .sort((a, b) => uniqueStationIds.indexOf(a.id) - uniqueStationIds.indexOf(b.id));
+                
+            } catch (error) {
+                console.error('Error getting recent stations from database:', error);
+                return getMostRecentStationsLocal(limit);
+            }
+        }
+        
+        // Get most recent stations from local storage (fallback)
+        function getMostRecentStationsLocal(limit = 10) {
+            try {
+                const history = JSON.parse(localStorage.getItem('station_history') || '[]');
+                
+                const uniqueStationIds = [];
+                const seenIds = new Set();
+                
+                for (let i = history.length - 1; i >= 0; i--) {
+                    const stationId = history[i].station_id;
+                    if (!seenIds.has(stationId)) {
+                        seenIds.add(stationId);
+                        uniqueStationIds.push(stationId);
+                        if (uniqueStationIds.length >= limit) break;
+                    }
+                }
+                
+                return stations.filter(s => uniqueStationIds.includes(s.id))
+                    .sort((a, b) => uniqueStationIds.indexOf(a.id) - uniqueStationIds.indexOf(b.id));
+                
+            } catch (error) {
+                console.error('Error getting recent stations from local storage:', error);
+                return [];
+            }
+        }
+        
+        // Get most played stations
+        async function getMostPlayedStations(limit = 10) {
+            try {
+                const userId = getOrCreateUserId();
+                
+                const { data, error } = await supabase
+                    .from('station_history')
+                    .select('station_id')
+                    .eq('user_id', userId);
+                
+                if (error) throw error;
+                
+                const counts = {};
+                data.forEach(record => {
+                    counts[record.station_id] = (counts[record.station_id] || 0) + 1;
+                });
+                
+                // Sort by count and get top station IDs (as numbers)
+                const sortedStationIds = Object.keys(counts)
+                    .map(id => parseInt(id))
+                    .sort((a, b) => counts[b] - counts[a])
+                    .slice(0, limit);
+                
+                return stations.filter(s => sortedStationIds.includes(s.id))
+                    .sort((a, b) => counts[b.id] - counts[a.id]);
+                
+            } catch (error) {
+                console.error('Error getting most played stations from database:', error);
+                return getMostPlayedStationsLocal(limit);
+            }
+        }
+        
+        // Get most played stations from local storage (fallback)
+        function getMostPlayedStationsLocal(limit = 10) {
+            try {
+                const history = JSON.parse(localStorage.getItem('station_history') || '[]');
+                
+                const counts = {};
+                history.forEach(record => {
+                    counts[record.station_id] = (counts[record.station_id] || 0) + 1;
+                });
+                
+                // Sort by count and get top station IDs (as numbers)
+                const sortedStationIds = Object.keys(counts)
+                    .map(id => parseInt(id))
+                    .sort((a, b) => counts[b] - counts[a])
+                    .slice(0, limit);
+                
+                return stations.filter(s => sortedStationIds.includes(s.id))
+                    .sort((a, b) => counts[b.id] - counts[a.id]);
+                
+            } catch (error) {
+                console.error('Error getting most played stations from local storage:', error);
+                return [];
+            }
+        }
+        
         // Load stations from Supabase
         async function loadStations(forceRefresh = false) {
             try {
@@ -1529,41 +1702,92 @@
         
         // Render playlists list
         function renderPlaylistsList() {
+            // Start with history options
+            let htmlContent = `
+                <div class="playlist-item history-item" data-action="recent">
+                    <div class="playlist-icon">🕒</div>
+                    <div class="playlist-info">
+                        <div class="playlist-name">Most Recent Stations</div>
+                        <div class="playlist-count">Your recently played</div>
+                    </div>
+                </div>
+                <div class="playlist-item history-item" data-action="played">
+                    <div class="playlist-icon">🔥</div>
+                    <div class="playlist-info">
+                        <div class="playlist-name">Most Played Stations</div>
+                        <div class="playlist-count">Your favorites</div>
+                    </div>
+                </div>
+            `;
+            
             if (playlists.length === 0) {
-                playlistsList.innerHTML = `
+                htmlContent += `
                     <div class="empty-state">
                         <div class="empty-state-icon">📝</div>
-                        <div class="empty-state-text">No playlists yet. Create one to organize your favorite stations!</div>
+                        <div class="empty-state-text">No custom playlists yet. Create one to organize your favorite stations!</div>
                     </div>
                 `;
-                return;
+            } else {
+                htmlContent += playlists.map(playlist => {
+                    const count = playlist.playlist_items?.[0]?.count || 0;
+                    return `
+                        <div class="playlist-item" data-id="${playlist.id}">
+                            <div class="playlist-icon">🎵</div>
+                            <div class="playlist-info">
+                                <div class="playlist-name">${escapeHtml(playlist.name)}</div>
+                                <div class="playlist-count">${count} ${count === 1 ? 'station' : 'stations'}</div>
+                            </div>
+                            <button class="playlist-menu-btn" data-id="${playlist.id}">⋮</button>
+                            <div class="playlist-dropdown">
+                                <div class="dropdown-item" data-action="view" data-playlist-id="${playlist.id}">
+                                    <span>📻</span> View Playlist
+                                </div>
+                                <div class="dropdown-item" data-action="edit" data-playlist-id="${playlist.id}">
+                                    <span>✏️</span> Rename
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <div class="dropdown-item danger" data-action="delete" data-playlist-id="${playlist.id}">
+                                    <span>🗑️</span> Delete
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
             }
             
-            playlistsList.innerHTML = playlists.map(playlist => {
-                const count = playlist.playlist_items?.[0]?.count || 0;
-                return `
-                    <div class="playlist-item" data-id="${playlist.id}">
-                        <div class="playlist-icon">🎵</div>
-                        <div class="playlist-info">
-                            <div class="playlist-name">${escapeHtml(playlist.name)}</div>
-                            <div class="playlist-count">${count} ${count === 1 ? 'station' : 'stations'}</div>
-                        </div>
-                        <button class="playlist-menu-btn" data-id="${playlist.id}">⋮</button>
-                        <div class="playlist-dropdown">
-                            <div class="dropdown-item" data-action="view" data-playlist-id="${playlist.id}">
-                                <span>📻</span> View Playlist
-                            </div>
-                            <div class="dropdown-item" data-action="edit" data-playlist-id="${playlist.id}">
-                                <span>✏️</span> Rename
-                            </div>
-                            <div class="dropdown-divider"></div>
-                            <div class="dropdown-item danger" data-action="delete" data-playlist-id="${playlist.id}">
-                                <span>🗑️</span> Delete
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            playlistsList.innerHTML = htmlContent;
+            
+            // Add event listeners for history items
+            document.querySelectorAll('.history-item').forEach(item => {
+                item.addEventListener('click', async (e) => {
+                    const action = item.dataset.action;
+                    if (action === 'recent') {
+                        const recentStations = await getMostRecentStations(10);
+                        if (recentStations.length === 0) {
+                            alert('No recent stations yet. Start listening to build your history!');
+                            return;
+                        }
+                        // Open in playlist modal
+                        playlistStations = recentStations;
+                        currentPlaylist = { id: 'recent', name: 'Most Recent Stations' };
+                        playlistModalTitle.textContent = 'Most Recent Stations';
+                        renderPlaylistStations();
+                        playlistModal.classList.add('active');
+                    } else if (action === 'played') {
+                        const playedStations = await getMostPlayedStations(10);
+                        if (playedStations.length === 0) {
+                            alert('No play history yet. Start listening to see your favorites!');
+                            return;
+                        }
+                        // Open in playlist modal
+                        playlistStations = playedStations;
+                        currentPlaylist = { id: 'played', name: 'Most Played Stations' };
+                        playlistModalTitle.textContent = 'Most Played Stations';
+                        renderPlaylistStations();
+                        playlistModal.classList.add('active');
+                    }
+                });
+            });
             
             // Add event listeners for playlist items
             document.querySelectorAll('.playlist-item').forEach(item => {
@@ -1822,6 +2046,9 @@
         // Select station
         function selectStation(station) {
             currentStation = station;
+            
+            // Track the station click
+            trackStationClick(station.id);
             
             // Update display
             stationDisplay.style.display = 'flex';
