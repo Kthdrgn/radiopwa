@@ -1,0 +1,2062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Stream radio stations with live metadata and album art">
+    <meta name="theme-color" content="#667eea">
+    <title>Radio Player</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- iOS specific tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Radio Player">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-192x192.png">
+    
+    <!-- CACHE CONTROL: Prevent aggressive caching of API data -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <!-- Load the icecast-metadata-player library from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/icecast-metadata-player@1.17.13/build/icecast-metadata-player-1.17.13.main.min.js"></script>
+    
+    <!-- Load HLS.js for m3u8 stream support -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <!-- Load Supabase client library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+        
+        .player-container {
+            max-width: 500px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+        
+        /* Station selector button */
+        .station-selector-btn {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .station-selector-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        /* Station display with info */
+        .station-display {
+            width: 100%;
+            padding: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .station-display:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .station-display-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            object-fit: cover;
+            background: rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+        
+        .station-display-info {
+            flex: 1;
+            text-align: left;
+        }
+        
+        .station-display-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: white;
+        }
+        
+        .station-display-genres {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .station-display-change {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            flex-shrink: 0;
+        }
+        
+        /* Album art container */
+        .artwork-container {
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 1;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .album-art {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .album-art-placeholder {
+            font-size: 120px;
+            opacity: 0.5;
+        }
+        
+        /* Metadata section */
+        .metadata-section {
+            text-align: center;
+            width: 100%;
+            padding: 0 20px;
+        }
+        
+        .now-playing-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 15px;
+        }
+        
+        .song-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: white;
+        }
+        
+        .artist-name {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 6px;
+        }
+        
+        .album-name {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .no-metadata {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+        }
+        
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+        }
+        
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-play {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-play:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+        }
+        
+        .btn-stop {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-stop:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Status bar */
+        .status-bar {
+            width: 100%;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .status-idle {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .status-loading {
+            background: rgba(255, 200, 0, 0.2);
+            color: #ffd700;
+        }
+        
+        .status-playing {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00ff00;
+        }
+        
+        .status-stopped {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .status-error {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff6b6b;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 32px;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .close-btn:hover {
+            color: white;
+            transform: rotate(90deg);
+        }
+        
+        /* Station menu buttons */
+        .station-menu-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .station-menu-btn {
+            padding: 12px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            position: relative;
+        }
+        
+        .station-menu-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .station-menu-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+        }
+        
+        .station-menu-btn .icon {
+            margin-right: 8px;
+        }
+        
+        /* Search box */
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        /* Station list */
+        .station-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        
+        .station-item {
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .station-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateX(5px);
+        }
+        
+        .station-item.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+        }
+        
+        .station-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+        
+        .station-info {
+            flex: 1;
+            text-align: left;
+        }
+        
+        .station-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 4px;
+        }
+        
+        .station-genres {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .station-meta {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            font-style: italic;
+            text-align: right;
+        }
+        
+        .no-stations {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-style: italic;
+        }
+        
+        /* Scrollbar styling */
+        .station-list::-webkit-scrollbar,
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .station-list::-webkit-scrollbar-track,
+        .modal-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        
+        .station-list::-webkit-scrollbar-thumb,
+        .modal-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        
+        .station-list::-webkit-scrollbar-thumb:hover,
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Settings */
+        .settings-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .settings-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: white;
+        }
+        
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+        }
+        
+        .setting-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        /* Toggle switch */
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .toggle-switch input {
+            display: none;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        
+        .toggle-switch input:checked + .toggle-slider {
+            transform: translateX(24px);
+        }
+        
+        .toggle-switch input:checked ~ .toggle-switch {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .toggle-switch:has(input:checked) {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* Quality selector */
+        .quality-section {
+            margin-top: 20px;
+        }
+        
+        .quality-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .quality-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        
+        .quality-option {
+            padding: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .quality-option:hover:not(.disabled) {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .quality-option.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+        }
+        
+        .quality-option.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 600px) {
+            .player-container {
+                padding: 10px;
+                gap: 20px;
+            }
+            
+            .artwork-container {
+                max-width: 300px;
+            }
+            
+            .song-title {
+                font-size: 20px;
+            }
+            
+            .artist-name {
+                font-size: 16px;
+            }
+            
+            .controls {
+                gap: 15px;
+            }
+            
+            .btn {
+                padding: 12px 30px;
+                font-size: 14px;
+            }
+            
+            .station-menu-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Playlist section styles */
+        .playlist-section {
+            margin-top: 30px;
+        }
+        
+        .playlist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .playlist-title-section {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .playlist-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .playlist-btn {
+            padding: 8px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .playlist-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .playlist-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .playlist-item {
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .playlist-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .playlist-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .playlist-item-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .playlist-item-count {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .playlist-item-stations {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .playlist-form {
+            padding: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 8px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 14px;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .form-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .form-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .form-btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dropdown-container {
+            position: relative;
+        }
+        
+        .playlist-dropdown,
+        .station-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 8px;
+            min-width: 200px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            display: none;
+        }
+        
+        .playlist-dropdown.active,
+        .station-dropdown.active {
+            display: block;
+        }
+        
+        .dropdown-item {
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dropdown-divider {
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 8px 0;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <!-- Station Selector Button -->
+        <button class="station-selector-btn" id="stationSelectorBtn">
+            📻 Select Station
+        </button>
+        
+        <!-- Station Display -->
+        <div class="station-display" id="stationDisplay" style="display: none;">
+            <img class="station-display-icon" id="stationDisplayIcon" src="" alt="Station Icon">
+            <div class="station-display-info">
+                <div class="station-display-name" id="stationDisplayName">No Station Selected</div>
+                <div class="station-display-genres" id="stationDisplayGenres"></div>
+            </div>
+            <div class="station-display-change">CHANGE</div>
+        </div>
+        
+        <!-- Album Art -->
+        <div class="artwork-container">
+            <img class="album-art" id="albumArt" style="display: none;" src="" alt="Album Art">
+            <div class="album-art-placeholder" id="albumArtPlaceholder">🎵</div>
+        </div>
+        
+        <!-- Metadata -->
+        <div class="metadata-section" id="metadataSection">
+            <div class="now-playing-label">NOW PLAYING</div>
+            <div class="no-metadata">Select a station to start streaming</div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn btn-play" id="playBtn" disabled>Play</button>
+            <button class="btn btn-stop" id="stopBtn" disabled>Stop</button>
+        </div>
+        
+        <!-- Status Bar -->
+        <div class="status-bar status-idle" id="statusBar">
+            Ready to stream
+        </div>
+    </div>
+    
+    <!-- Station Modal -->
+    <div class="modal" id="stationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Select Station</h2>
+                <button class="close-btn" id="closeModal">&times;</button>
+            </div>
+            
+            <!-- Station Menu Buttons -->
+            <div class="station-menu-buttons">
+                <button class="station-menu-btn active" id="allStationsBtn">
+                    <span class="icon">📻</span>All Stations
+                </button>
+                <button class="station-menu-btn" id="recentStationsBtn">
+                    <span class="icon">🕐</span>Recent
+                </button>
+                <button class="station-menu-btn" id="mostPlayedBtn">
+                    <span class="icon">🔥</span>Most Played
+                </button>
+                <button class="station-menu-btn" id="favoritesBtn">
+                    <span class="icon">⭐</span>Favorites
+                </button>
+            </div>
+            
+            <!-- Search Box -->
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="stationSearch" 
+                    placeholder="Search stations..."
+                    autocomplete="off"
+                >
+            </div>
+            
+            <!-- Station List -->
+            <div class="station-list" id="stationList">
+                <div class="no-stations">Loading stations...</div>
+            </div>
+            
+            <!-- Settings Section -->
+            <div class="settings-section">
+                <div class="settings-title">Settings</div>
+                
+                <div class="setting-item">
+                    <span class="setting-label">Use CORS Proxy</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="globalCorsProxy">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <!-- Quality Selector -->
+                <div class="quality-section">
+                    <div class="quality-title">Stream Quality</div>
+                    <div class="quality-options">
+                        <button class="quality-option active" data-quality="standard">Standard</button>
+                        <button class="quality-option disabled" data-quality="high">High</button>
+                        <button class="quality-option disabled" data-quality="max">Max</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Playlist Section -->
+            <div class="playlist-section">
+                <div class="playlist-header">
+                    <div class="playlist-title-section">Playlists</div>
+                    <div class="playlist-actions">
+                        <button class="playlist-btn" id="newPlaylistBtn">+ New</button>
+                        <div class="dropdown-container">
+                            <button class="playlist-btn" id="playlistMenuBtn">⋮</button>
+                            <div class="playlist-dropdown" id="playlistDropdown">
+                                <div class="dropdown-item" id="addToPlaylistBtn">Add Current Station</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- New Playlist Form (hidden by default) -->
+                <div class="playlist-form" id="newPlaylistForm" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Playlist Name</label>
+                        <input type="text" class="form-input" id="playlistNameInput" placeholder="My Playlist">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description (optional)</label>
+                        <input type="text" class="form-input" id="playlistDescInput" placeholder="Description">
+                    </div>
+                    <div class="form-actions">
+                        <button class="form-btn form-btn-secondary" id="cancelPlaylistBtn">Cancel</button>
+                        <button class="form-btn form-btn-primary" id="savePlaylistBtn">Save</button>
+                    </div>
+                </div>
+                
+                <div class="playlist-list" id="playlistList">
+                    <div class="no-stations">No playlists yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ======================
+        // SUPABASE INITIALIZATION
+        // ======================
+        
+        // Initialize Supabase client
+        const SUPABASE_URL = 'https://zwrunupvlkhnwbylzizj.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3cnVudXB2bGtobndieWx6aXpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMTIxNzEsImV4cCI6MjA3NjY4ODE3MX0.WBTLcTNWgGZ-I6o_Dd7ObfS2avmJc_iiIEpDp8-VuQ4';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // ======================
+        // USER ID MANAGEMENT
+        // ======================
+        
+        // Get or create a unique user ID for this browser
+        function getUserId() {
+            let userId = localStorage.getItem('radio_user_id');
+            if (!userId) {
+                userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('radio_user_id', userId);
+            }
+            return userId;
+        }
+        
+        const currentUserId = getUserId();
+        
+        // ======================
+        // STATION TRACKING
+        // ======================
+        
+        // Track a station play
+        async function trackStationPlay(station) {
+            try {
+                // Save to localStorage for offline/quick access
+                const recentPlays = getRecentPlays();
+                const playRecord = {
+                    station_id: station.id,
+                    station_name: station.name,
+                    station_icon: station.icon_url,
+                    station_genres: station.genres,
+                    played_at: new Date().toISOString()
+                };
+                
+                // Add to recent plays (keep last 50)
+                recentPlays.unshift(playRecord);
+                if (recentPlays.length > 50) {
+                    recentPlays.pop();
+                }
+                localStorage.setItem('recent_plays', JSON.stringify(recentPlays));
+                
+                // Update play count
+                updatePlayCount(station.id);
+                
+                // Sync to Supabase (non-blocking)
+                syncPlayToSupabase(station).catch(err => {
+                    console.log('Could not sync play to Supabase:', err.message);
+                });
+                
+            } catch (error) {
+                console.error('Error tracking station play:', error);
+            }
+        }
+        
+        // Sync play to Supabase
+        async function syncPlayToSupabase(station) {
+            const { data, error } = await supabaseClient
+                .from('station_plays')
+                .insert([{
+                    user_id: currentUserId,
+                    station_id: station.id,
+                    station_name: station.name,
+                    played_at: new Date().toISOString()
+                }]);
+            
+            if (error) throw error;
+            return data;
+        }
+        
+        // Get recent plays from localStorage
+        function getRecentPlays() {
+            try {
+                const plays = localStorage.getItem('recent_plays');
+                return plays ? JSON.parse(plays) : [];
+            } catch {
+                return [];
+            }
+        }
+        
+        // Update play count for a station
+        function updatePlayCount(stationId) {
+            try {
+                const playCounts = getPlayCounts();
+                playCounts[stationId] = (playCounts[stationId] || 0) + 1;
+                localStorage.setItem('play_counts', JSON.stringify(playCounts));
+            } catch (error) {
+                console.error('Error updating play count:', error);
+            }
+        }
+        
+        // Get play counts from localStorage
+        function getPlayCounts() {
+            try {
+                const counts = localStorage.getItem('play_counts');
+                return counts ? JSON.parse(counts) : {};
+            } catch {
+                return {};
+            }
+        }
+        
+        // Get most played stations
+        function getMostPlayedStations(allStations, limit = 10) {
+            const playCounts = getPlayCounts();
+            
+            // Create array of stations with their play counts
+            const stationsWithCounts = allStations
+                .map(station => ({
+                    ...station,
+                    play_count: playCounts[station.id] || 0
+                }))
+                .filter(station => station.play_count > 0)
+                .sort((a, b) => b.play_count - a.play_count)
+                .slice(0, limit);
+            
+            return stationsWithCounts;
+        }
+        
+        // Get recent stations (deduplicated)
+        function getRecentStations(limit = 10) {
+            const recentPlays = getRecentPlays();
+            const seen = new Set();
+            const recentStations = [];
+            
+            for (const play of recentPlays) {
+                if (!seen.has(play.station_id) && recentStations.length < limit) {
+                    seen.add(play.station_id);
+                    recentStations.push({
+                        id: play.station_id,
+                        name: play.station_name,
+                        icon_url: play.station_icon,
+                        genres: play.station_genres,
+                        last_played: play.played_at
+                    });
+                }
+            }
+            
+            return recentStations;
+        }
+        
+        // ======================
+        // STATE & VARIABLES
+        // ======================
+        
+        let player = null;
+        let hlsPlayer = null;
+        let isPlaying = false;
+        let currentStation = null;
+        let currentStreamUrl = null;
+        let allStations = [];
+        let filteredStations = [];
+        let currentView = 'all'; // 'all', 'recent', 'mostPlayed', 'favorites'
+        let allPlaylists = [];
+        
+        // ======================
+        // DOM ELEMENTS
+        // ======================
+        
+        const stationSelectorBtn = document.getElementById('stationSelectorBtn');
+        const stationDisplay = document.getElementById('stationDisplay');
+        const stationDisplayIcon = document.getElementById('stationDisplayIcon');
+        const stationDisplayName = document.getElementById('stationDisplayName');
+        const stationDisplayGenres = document.getElementById('stationDisplayGenres');
+        const albumArt = document.getElementById('albumArt');
+        const albumArtPlaceholder = document.getElementById('albumArtPlaceholder');
+        const metadataDiv = document.getElementById('metadataSection');
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusBar = document.getElementById('statusBar');
+        const stationModal = document.getElementById('stationModal');
+        const closeModal = document.getElementById('closeModal');
+        const stationSearch = document.getElementById('stationSearch');
+        const stationList = document.getElementById('stationList');
+        
+        // Station menu buttons
+        const allStationsBtn = document.getElementById('allStationsBtn');
+        const recentStationsBtn = document.getElementById('recentStationsBtn');
+        const mostPlayedBtn = document.getElementById('mostPlayedBtn');
+        const favoritesBtn = document.getElementById('favoritesBtn');
+        
+        // Playlist elements
+        const newPlaylistBtn = document.getElementById('newPlaylistBtn');
+        const playlistMenuBtn = document.getElementById('playlistMenuBtn');
+        const playlistDropdown = document.getElementById('playlistDropdown');
+        const addToPlaylistBtn = document.getElementById('addToPlaylistBtn');
+        const newPlaylistForm = document.getElementById('newPlaylistForm');
+        const cancelPlaylistBtn = document.getElementById('cancelPlaylistBtn');
+        const savePlaylistBtn = document.getElementById('savePlaylistBtn');
+        const playlistList = document.getElementById('playlistList');
+        
+        // ======================
+        // SUPABASE FUNCTIONS
+        // ======================
+        
+        async function loadStations() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('stations')
+                    .select('*')
+                    .order('name');
+                
+                if (error) throw error;
+                
+                allStations = data || [];
+                filteredStations = allStations;
+                displayStations();
+            } catch (error) {
+                console.error('Error loading stations:', error);
+                stationList.innerHTML = '<div class="no-stations">Error loading stations. Please check your Supabase configuration.</div>';
+            }
+        }
+        
+        async function loadPlaylists() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('playlists')
+                    .select(`
+                        *,
+                        playlist_stations (
+                            station_id
+                        )
+                    `)
+                    .eq('user_id', currentUserId)
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                allPlaylists = data || [];
+                displayPlaylists();
+            } catch (error) {
+                console.error('Error loading playlists:', error);
+            }
+        }
+        
+        async function createPlaylist(name, description) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('playlists')
+                    .insert([{
+                        user_id: currentUserId,
+                        name: name,
+                        description: description
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                
+                return data[0];
+            } catch (error) {
+                console.error('Error creating playlist:', error);
+                throw error;
+            }
+        }
+        
+        async function addStationToPlaylist(playlistId, stationId) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('playlist_stations')
+                    .insert([{
+                        playlist_id: playlistId,
+                        station_id: stationId
+                    }]);
+                
+                if (error) throw error;
+                
+                return data;
+            } catch (error) {
+                console.error('Error adding station to playlist:', error);
+                throw error;
+            }
+        }
+        
+        // ======================
+        // DISPLAY FUNCTIONS
+        // ======================
+        
+        function displayStations() {
+            if (filteredStations.length === 0) {
+                stationList.innerHTML = '<div class="no-stations">No stations found</div>';
+                return;
+            }
+            
+            stationList.innerHTML = filteredStations.map(station => {
+                const isSelected = currentStation && currentStation.id === station.id;
+                const playCounts = getPlayCounts();
+                const playCount = playCounts[station.id] || 0;
+                
+                let metaInfo = '';
+                if (currentView === 'mostPlayed' && playCount > 0) {
+                    metaInfo = `<div class="station-meta">${playCount} play${playCount !== 1 ? 's' : ''}</div>`;
+                } else if (currentView === 'recent' && station.last_played) {
+                    const playedDate = new Date(station.last_played);
+                    const now = new Date();
+                    const diffMs = now - playedDate;
+                    const diffMins = Math.floor(diffMs / 60000);
+                    const diffHours = Math.floor(diffMs / 3600000);
+                    const diffDays = Math.floor(diffMs / 86400000);
+                    
+                    let timeAgo;
+                    if (diffMins < 1) timeAgo = 'Just now';
+                    else if (diffMins < 60) timeAgo = `${diffMins}m ago`;
+                    else if (diffHours < 24) timeAgo = `${diffHours}h ago`;
+                    else timeAgo = `${diffDays}d ago`;
+                    
+                    metaInfo = `<div class="station-meta">${timeAgo}</div>`;
+                }
+                
+                return `
+                    <div class="station-item ${isSelected ? 'selected' : ''}" data-station-id="${station.id}">
+                        <img class="station-icon" src="${station.icon_url || 'icons/icon-192x192.png'}" alt="${station.name}">
+                        <div class="station-info">
+                            <div class="station-name">${station.name}</div>
+                            <div class="station-genres">${station.genres || 'Various'}</div>
+                        </div>
+                        ${metaInfo}
+                    </div>
+                `;
+            }).join('');
+            
+            // Add click handlers
+            document.querySelectorAll('.station-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const stationId = item.dataset.stationId;
+                    const station = filteredStations.find(s => s.id === stationId);
+                    if (station) {
+                        selectStation(station);
+                    }
+                });
+            });
+        }
+        
+        function displayPlaylists() {
+            if (allPlaylists.length === 0) {
+                playlistList.innerHTML = '<div class="no-stations">No playlists yet</div>';
+                return;
+            }
+            
+            playlistList.innerHTML = allPlaylists.map(playlist => {
+                const stationCount = playlist.playlist_stations ? playlist.playlist_stations.length : 0;
+                return `
+                    <div class="playlist-item" data-playlist-id="${playlist.id}">
+                        <div class="playlist-item-header">
+                            <div class="playlist-item-name">${playlist.name}</div>
+                            <div class="playlist-item-count">${stationCount} station${stationCount !== 1 ? 's' : ''}</div>
+                        </div>
+                        ${playlist.description ? `<div class="playlist-item-stations">${playlist.description}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            // Add click handlers
+            document.querySelectorAll('.playlist-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const playlistId = item.dataset.playlistId;
+                    loadPlaylistStations(playlistId);
+                });
+            });
+        }
+        
+        async function loadPlaylistStations(playlistId) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('playlist_stations')
+                    .select(`
+                        stations (*)
+                    `)
+                    .eq('playlist_id', playlistId);
+                
+                if (error) throw error;
+                
+                filteredStations = data.map(item => item.stations);
+                currentView = 'playlist';
+                displayStations();
+                
+                // Update button states
+                document.querySelectorAll('.station-menu-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+            } catch (error) {
+                console.error('Error loading playlist stations:', error);
+            }
+        }
+        
+        function selectStation(station) {
+            currentStation = station;
+            
+            // Track the play
+            trackStationPlay(station);
+            
+            // Update display
+            stationDisplay.style.display = 'flex';
+            stationDisplayIcon.src = station.icon_url || 'icons/icon-192x192.png';
+            stationDisplayName.textContent = station.name;
+            stationDisplayGenres.textContent = station.genres || 'Various';
+            
+            // Hide selector button
+            stationSelectorBtn.style.display = 'none';
+            
+            // Update quality buttons
+            updateQualityButtons(station);
+            
+            // Enable play button
+            playBtn.disabled = false;
+            
+            // Close modal
+            stationModal.classList.remove('active');
+            
+            // If currently playing, switch streams
+            if (isPlaying) {
+                stopAllPlayers();
+                playBtn.click();
+            }
+        }
+        
+        function updateQualityButtons(station) {
+            const qualities = ['standard', 'high', 'max'];
+            const availableUrls = {
+                standard: station.url,
+                high: station.url_high,
+                max: station.url_max
+            };
+            
+            document.querySelectorAll('.quality-option').forEach(option => {
+                const quality = option.dataset.quality;
+                if (availableUrls[quality]) {
+                    option.classList.remove('disabled');
+                } else {
+                    option.classList.add('disabled');
+                }
+            });
+        }
+        
+        function displayStationIcon() {
+            if (currentStation) {
+                albumArt.style.display = 'none';
+                albumArtPlaceholder.style.display = 'flex';
+                albumArtPlaceholder.textContent = '📻';
+            }
+        }
+        
+        function displayMetadata(metadata) {
+            if (!metadata || !metadata.StreamTitle) {
+                metadataDiv.innerHTML = `
+                    <div class="now-playing-label">NOW PLAYING</div>
+                    <div class="no-metadata">Streaming ${currentStation ? currentStation.name : ''}</div>
+                `;
+                displayStationIcon();
+                return;
+            }
+            
+            const parts = metadata.StreamTitle.split(' - ');
+            let artist = 'Unknown Artist';
+            let title = metadata.StreamTitle;
+            let album = '';
+            
+            if (parts.length >= 2) {
+                artist = parts[0].trim();
+                title = parts.slice(1).join(' - ').trim();
+            }
+            
+            metadataDiv.innerHTML = `
+                <div class="now-playing-label">NOW PLAYING</div>
+                <div class="song-title">${title}</div>
+                <div class="artist-name">${artist}</div>
+                ${album ? `<div class="album-name">${album}</div>` : ''}
+            `;
+            
+            // Update Media Session
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: title,
+                    artist: artist,
+                    album: album || (currentStation ? currentStation.name : ''),
+                    artwork: currentStation && currentStation.icon_url ? [
+                        { src: currentStation.icon_url, sizes: '512x512', type: 'image/png' }
+                    ] : []
+                });
+            }
+            
+            // Fetch album art
+            fetchAlbumArt(artist, title);
+        }
+        
+        async function fetchAlbumArt(artist, title) {
+            try {
+                const query = encodeURIComponent(`${artist} ${title}`);
+                const response = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    const artworkUrl = data.results[0].artworkUrl100.replace('100x100', '600x600');
+                    albumArt.src = artworkUrl;
+                    albumArt.style.display = 'block';
+                    albumArtPlaceholder.style.display = 'none';
+                } else {
+                    displayStationIcon();
+                }
+            } catch (error) {
+                console.error('Error fetching album art:', error);
+                displayStationIcon();
+            }
+        }
+        
+        function updateStatus(message, state = 'idle') {
+            statusBar.textContent = message;
+            statusBar.className = 'status-bar';
+            statusBar.classList.add(`status-${state}`);
+        }
+        
+        // ======================
+        // EVENT HANDLERS
+        // ======================
+        
+        // Station selector button
+        stationSelectorBtn.addEventListener('click', () => {
+            stationModal.classList.add('active');
+        });
+        
+        // Station display (change station)
+        stationDisplay.addEventListener('click', () => {
+            stationModal.classList.add('active');
+        });
+        
+        // Close modal
+        closeModal.addEventListener('click', () => {
+            stationModal.classList.remove('active');
+        });
+        
+        // Click outside modal to close
+        stationModal.addEventListener('click', (e) => {
+            if (e.target === stationModal) {
+                stationModal.classList.remove('active');
+            }
+        });
+        
+        // Station menu buttons
+        allStationsBtn.addEventListener('click', () => {
+            currentView = 'all';
+            filteredStations = allStations;
+            displayStations();
+            
+            // Update button states
+            document.querySelectorAll('.station-menu-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            allStationsBtn.classList.add('active');
+        });
+        
+        recentStationsBtn.addEventListener('click', () => {
+            currentView = 'recent';
+            filteredStations = getRecentStations();
+            displayStations();
+            
+            // Update button states
+            document.querySelectorAll('.station-menu-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            recentStationsBtn.classList.add('active');
+        });
+        
+        mostPlayedBtn.addEventListener('click', () => {
+            currentView = 'mostPlayed';
+            filteredStations = getMostPlayedStations(allStations);
+            displayStations();
+            
+            // Update button states
+            document.querySelectorAll('.station-menu-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            mostPlayedBtn.classList.add('active');
+        });
+        
+        favoritesBtn.addEventListener('click', () => {
+            currentView = 'favorites';
+            // TODO: Implement favorites
+            filteredStations = [];
+            displayStations();
+            
+            // Update button states
+            document.querySelectorAll('.station-menu-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            favoritesBtn.classList.add('active');
+        });
+        
+        // Search functionality
+        stationSearch.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            
+            if (currentView === 'all') {
+                filteredStations = allStations.filter(station => 
+                    station.name.toLowerCase().includes(query) ||
+                    (station.genres && station.genres.toLowerCase().includes(query))
+                );
+            } else if (currentView === 'recent') {
+                const recentStations = getRecentStations(50);
+                filteredStations = recentStations.filter(station => 
+                    station.name.toLowerCase().includes(query) ||
+                    (station.genres && station.genres.toLowerCase().includes(query))
+                );
+            } else if (currentView === 'mostPlayed') {
+                const mostPlayed = getMostPlayedStations(allStations, 50);
+                filteredStations = mostPlayed.filter(station => 
+                    station.name.toLowerCase().includes(query) ||
+                    (station.genres && station.genres.toLowerCase().includes(query))
+                );
+            }
+            
+            displayStations();
+        });
+        
+        // Quality selector
+        document.querySelectorAll('.quality-option').forEach(option => {
+            option.addEventListener('click', () => {
+                if (option.classList.contains('disabled')) return;
+                
+                document.querySelectorAll('.quality-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                option.classList.add('active');
+            });
+        });
+        
+        // Playlist buttons
+        newPlaylistBtn.addEventListener('click', () => {
+            newPlaylistForm.style.display = 'block';
+            document.getElementById('playlistNameInput').focus();
+        });
+        
+        cancelPlaylistBtn.addEventListener('click', () => {
+            newPlaylistForm.style.display = 'none';
+            document.getElementById('playlistNameInput').value = '';
+            document.getElementById('playlistDescInput').value = '';
+        });
+        
+        savePlaylistBtn.addEventListener('click', async () => {
+            const name = document.getElementById('playlistNameInput').value.trim();
+            const description = document.getElementById('playlistDescInput').value.trim();
+            
+            if (!name) {
+                alert('Please enter a playlist name');
+                return;
+            }
+            
+            try {
+                await createPlaylist(name, description);
+                await loadPlaylists();
+                
+                newPlaylistForm.style.display = 'none';
+                document.getElementById('playlistNameInput').value = '';
+                document.getElementById('playlistDescInput').value = '';
+            } catch (error) {
+                alert('Error creating playlist. Please try again.');
+            }
+        });
+        
+        playlistMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            playlistDropdown.classList.toggle('active');
+        });
+        
+        addToPlaylistBtn.addEventListener('click', async () => {
+            if (!currentStation) {
+                alert('Please select a station first');
+                return;
+            }
+            
+            if (allPlaylists.length === 0) {
+                alert('Please create a playlist first');
+                return;
+            }
+            
+            // Simple implementation: add to first playlist
+            // TODO: Show playlist selection dialog
+            try {
+                await addStationToPlaylist(allPlaylists[0].id, currentStation.id);
+                await loadPlaylists();
+                playlistDropdown.classList.remove('active');
+                alert('Station added to playlist!');
+            } catch (error) {
+                alert('Error adding station to playlist. It may already be in the playlist.');
+            }
+        });
+        
+        // ======================
+        // MEDIA SESSION HANDLERS
+        // ======================
+        
+        function setupMediaSessionHandlers() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.setActionHandler('play', () => {
+                    if (!isPlaying && currentStation) {
+                        playBtn.click();
+                    }
+                });
+                
+                navigator.mediaSession.setActionHandler('pause', () => {
+                    if (isPlaying) {
+                        stopBtn.click();
+                    }
+                });
+                
+                navigator.mediaSession.setActionHandler('stop', () => {
+                    if (isPlaying) {
+                        stopBtn.click();
+                    }
+                });
+            }
+        }
+        
+        // ======================
+        // PLAYBACK FUNCTIONS
+        // ======================
+        
+        function stopAllPlayers() {
+            if (player) {
+                try {
+                    player.stop();
+                } catch (e) {
+                    console.log('Error stopping icecast player:', e);
+                }
+                player = null;
+            }
+            
+            if (hlsPlayer) {
+                try {
+                    hlsPlayer.destroy();
+                } catch (e) {
+                    console.log('Error destroying HLS player:', e);
+                }
+                hlsPlayer = null;
+            }
+        }
+        
+        function getStreamUrl() {
+            const activeQuality = document.querySelector('.quality-option.active');
+            const quality = activeQuality ? activeQuality.dataset.quality : 'standard';
+            
+            let url;
+            switch (quality) {
+                case 'high':
+                    url = currentStation.url_high || currentStation.url;
+                    break;
+                case 'max':
+                    url = currentStation.url_max || currentStation.url_high || currentStation.url;
+                    break;
+                default:
+                    url = currentStation.url;
+            }
+            
+            return url;
+        }
+        
+        // Play button handler
+        playBtn.addEventListener('click', async () => {
+            if (!currentStation) {
+                alert('Please select a station first');
+                return;
+            }
+            
+            playBtn.disabled = true;
+            stopBtn.disabled = false;
+            updateStatus('Connecting...', 'loading');
+            
+            stopAllPlayers();
+            
+            const rawUrl = getStreamUrl();
+            
+            // Check if it's an m3u8 stream
+            if (rawUrl.includes('.m3u8') || rawUrl.includes('m3u8')) {
+                try {
+                    const audio = new Audio();
+                    
+                    if (Hls.isSupported()) {
+                        hlsPlayer = new Hls({
+                            enableWorker: true,
+                            lowLatencyMode: true,
+                            backBufferLength: 90
+                        });
+                        
+                        hlsPlayer.loadSource(rawUrl);
+                        hlsPlayer.attachMedia(audio);
+                        
+                        hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                            audio.play();
+                            isPlaying = true;
+                            updateStatus('Playing (HLS stream)', 'playing');
+                            displayStationIcon();
+                            metadataDiv.innerHTML = `
+                                <div class="now-playing-label">NOW PLAYING</div>
+                                <div class="no-metadata">Streaming ${currentStation.name}</div>
+                            `;
+                        });
+                        
+                        hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                            console.error('HLS error:', data);
+                            if (data.fatal) {
+                                isPlaying = false;
+                                updateStatus('Error: Unable to play HLS stream', 'error');
+                                playBtn.disabled = false;
+                                stopBtn.disabled = true;
+                            }
+                        });
+                    } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+                        audio.src = rawUrl;
+                        audio.play();
+                        isPlaying = true;
+                        updateStatus('Playing (HLS stream)', 'playing');
+                        displayStationIcon();
+                        metadataDiv.innerHTML = `
+                            <div class="now-playing-label">NOW PLAYING</div>
+                            <div class="no-metadata">Streaming ${currentStation.name}</div>
+                        `;
+                    }
+                    
+                    return;
+                } catch (error) {
+                    console.error('HLS playback error:', error);
+                    updateStatus('Error playing stream', 'error');
+                    playBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    return;
+                }
+            }
+            
+            // Regular Icecast/Shoutcast stream
+            const useCorsProxy = document.getElementById('globalCorsProxy').checked;
+            
+            let attempts = [
+                { url: rawUrl, cors: false, metadata: ['icy', 'ogg'] },
+                { url: rawUrl, cors: false, metadata: ['ogg'] },
+                { url: rawUrl, cors: false, metadata: [] },
+                { url: rawUrl, cors: true, metadata: ['ogg'] },
+                { url: rawUrl, cors: true, metadata: [] }
+            ];
+            
+            if (useCorsProxy) {
+                attempts = [
+                    { url: rawUrl, cors: true, metadata: ['icy', 'ogg'] },
+                    { url: rawUrl, cors: true, metadata: ['ogg'] },
+                    { url: rawUrl, cors: true, metadata: [] },
+                    { url: rawUrl, cors: false, metadata: ['ogg'] },
+                    { url: rawUrl, cors: false, metadata: [] }
+                ];
+            }
+            
+            let lastError = null;
+            
+            for (let i = 0; i < attempts.length; i++) {
+                const attempt = attempts[i];
+                const streamUrl = attempt.cors 
+                    ? `https://corsproxy.io/?${encodeURIComponent(attempt.url)}`
+                    : attempt.url;
+                
+                try {
+                    if (i > 0) {
+                        const metadataDesc = attempt.metadata.includes('icy') ? 'full metadata' :
+                                           attempt.metadata.includes('ogg') ? 'OGG metadata' : 'no metadata';
+                        const statusMsg = attempt.cors 
+                            ? `Retrying with CORS proxy (${metadataDesc})...`
+                            : `Retrying (${metadataDesc})...`;
+                        updateStatus(statusMsg, 'loading');
+                    }
+                    
+                    player = new IcecastMetadataPlayer(streamUrl, {
+                        metadataTypes: attempt.metadata,
+                        enableLogging: false,
+                        
+                        onMetadata: (metadata) => {
+                            displayMetadata(metadata);
+                        },
+                        
+                        onPlay: () => {
+                            isPlaying = true;
+                            const statusMsg = attempt.metadata.length === 0 
+                                ? 'Playing (no metadata available)'
+                                : 'Playing';
+                            updateStatus(statusMsg, 'playing');
+                        },
+                        
+                        onStop: () => {
+                            isPlaying = false;
+                            updateStatus('Stopped', 'stopped');
+                            playBtn.disabled = false;
+                            stopBtn.disabled = true;
+                            displayStationIcon();
+                            metadataDiv.innerHTML = `
+                                <div class="now-playing-label">NOW PLAYING</div>
+                                <div class="no-metadata">Select a station to start streaming</div>
+                            `;
+                        },
+                        
+                        onError: (error) => {
+                            console.error(`Player error on attempt ${i + 1}:`, error);
+                        },
+                        
+                        bufferLength: 3,
+                        retryTimeout: 5,
+                        retryDelayRate: 0.5,
+                        retryDelayMin: 1,
+                        retryDelayMax: 10
+                    });
+                    
+                    await player.play();
+                    return;
+                    
+                } catch (error) {
+                    console.error(`Attempt ${i + 1}/${attempts.length} failed:`, error.message);
+                    lastError = error;
+                    
+                    if (player) {
+                        try {
+                            player.stop();
+                        } catch (e) {}
+                    }
+                    
+                    if (i < attempts.length - 1) {
+                        continue;
+                    }
+                }
+            }
+            
+            console.error('All connection attempts failed');
+            isPlaying = false;
+            updateStatus('Error: Unable to connect to stream. Try enabling/disabling CORS proxy.', 'error');
+            playBtn.disabled = false;
+            stopBtn.disabled = true;
+        });
+        
+        // Stop button handler
+        stopBtn.addEventListener('click', () => {
+            stopAllPlayers();
+            isPlaying = false;
+            updateStatus('Stopped', 'stopped');
+            playBtn.disabled = false;
+            stopBtn.disabled = true;
+            displayStationIcon();
+            metadataDiv.innerHTML = `
+                <div class="now-playing-label">NOW PLAYING</div>
+                <div class="no-metadata">Select a station to start streaming</div>
+            `;
+        });
+        
+        // Allow Enter key to search
+        stationSearch.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && filteredStations.length === 1) {
+                selectStation(filteredStations[0]);
+            }
+        });
+        
+        // ======================
+        // INITIALIZATION
+        // ======================
+        
+        // Initialize quality buttons as disabled until station is selected
+        document.querySelectorAll('.quality-option').forEach(option => {
+            if (option.dataset.quality !== 'standard') {
+                option.classList.add('disabled');
+            }
+        });
+        
+        // Load stations from Supabase on startup
+        loadStations();
+        loadPlaylists();
+        
+        // Setup Media Session handlers
+        setupMediaSessionHandlers();
+        
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.station-menu-btn') && 
+                !e.target.closest('.station-dropdown') &&
+                !e.target.closest('.playlist-menu-btn') &&
+                !e.target.closest('.playlist-dropdown')) {
+                document.querySelectorAll('.station-dropdown, .playlist-dropdown').forEach(dropdown => {
+                    dropdown.classList.remove('active');
+                });
+            }
+        });
+    </script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        // Register service worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Use relative path for GitHub Pages subdirectory support
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('ServiceWorker registered:', registration.scope);
+                        
+                        // Listen for messages from the service worker
+                        navigator.serviceWorker.addEventListener('message', (event) => {
+                            if (event.data && event.data.type === 'CACHE_CLEARED') {
+                                console.log('Service worker cache cleared successfully');
+                            }
+                        });
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New service worker available, prompt user to refresh
+                                    if (confirm('New version available! Reload to update?')) {
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.log('ServiceWorker registration failed:', error);
+                    });
+                
+                // Handle service worker updates
+                let refreshing;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshing) return;
+                    refreshing = true;
+                    window.location.reload();
+                });
+            });
+        }
+        
+        // Install prompt handling
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Optionally, show an install button
+            console.log('App can be installed');
+        });
+        
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA was installed');
+            deferredPrompt = null;
+        });
+    </script>
+</body>
+</html>
