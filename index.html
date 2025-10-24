@@ -376,13 +376,11 @@
         
         /* Search and filter controls */
         .search-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         
         .search-input {
-            flex: 1;
+            width: 100%;
             padding: 12px 16px;
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 10px;
@@ -400,6 +398,97 @@
         
         .search-input::placeholder {
             color: rgba(255, 255, 255, 0.4);
+        }
+        
+        /* Filter controls row */
+        .filter-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-container {
+            position: relative;
+            flex: 1;
+        }
+        
+        .filter-btn {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .filter-btn-label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .filter-dropdown {
+            position: absolute;
+            top: calc(100% + 5px);
+            left: 0;
+            right: 0;
+            background: rgba(30, 30, 30, 0.98);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 8px 0;
+            max-height: 0;
+            overflow-y: auto;
+            opacity: 0;
+            z-index: 1000;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+        
+        .filter-dropdown.active {
+            max-height: 300px;
+            opacity: 1;
+        }
+        
+        .filter-option {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .filter-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .filter-option.active {
+            background: rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        
+        .filter-option-icon {
+            font-size: 16px;
+        }
+        
+        .genre-count {
+            margin-left: auto;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
         }
         
         /* Playlists section */
@@ -1003,6 +1092,46 @@
                     >
                 </div>
                 
+                <!-- Filter Controls -->
+                <div class="filter-controls">
+                    <div class="filter-container">
+                        <button class="filter-btn" id="genreBtn">
+                            <span class="filter-btn-label" id="genreLabel">All Genres</span>
+                            <span>▼</span>
+                        </button>
+                        <div class="filter-dropdown" id="genreDropdown">
+                            <div class="filter-option active" data-genre="">
+                                <span class="filter-option-icon">🎵</span>
+                                <span>All Genres</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="filter-container">
+                        <button class="filter-btn" id="sortBtn">
+                            <span class="filter-btn-label" id="sortLabel">Name (A-Z)</span>
+                            <span>▼</span>
+                        </button>
+                        <div class="filter-dropdown" id="sortDropdown">
+                            <div class="filter-option active" data-sort="name-asc">
+                                <span class="filter-option-icon">🔤</span>
+                                <span>Name (A-Z)</span>
+                            </div>
+                            <div class="filter-option" data-sort="name-desc">
+                                <span class="filter-option-icon">🔤</span>
+                                <span>Name (Z-A)</span>
+                            </div>
+                            <div class="filter-option" data-sort="most-played">
+                                <span class="filter-option-icon">🔥</span>
+                                <span>Most Played</span>
+                            </div>
+                            <div class="filter-option" data-sort="recent">
+                                <span class="filter-option-icon">🕐</span>
+                                <span>Recently Played</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Stations Section -->
                 <div class="section-header">
                     <h3 class="section-title">All Stations</h3>
@@ -1168,6 +1297,8 @@
         let selectedQuality = 'standard';
         let editingStationId = null;
         let editingPlaylistId = null;
+        let currentSortMethod = 'name-asc'; // Default sort method
+        let currentGenreFilter = ''; // Empty string means all genres
         
         // DOM Elements
         const stationSelector = document.getElementById('stationSelector');
@@ -1195,6 +1326,14 @@
         const playlistModalTitle = document.getElementById('playlistModalTitle');
         const backToStations = document.getElementById('backToStations');
         const playlistStationList = document.getElementById('playlistStationList');
+        
+        // Sort and genre filter elements
+        const genreBtn = document.getElementById('genreBtn');
+        const genreDropdown = document.getElementById('genreDropdown');
+        const genreLabel = document.getElementById('genreLabel');
+        const sortBtn = document.getElementById('sortBtn');
+        const sortDropdown = document.getElementById('sortDropdown');
+        const sortLabel = document.getElementById('sortLabel');
         
         // Playlist form elements
         const playlistFormModal = document.getElementById('playlistFormModal');
@@ -1415,6 +1554,9 @@
                 if (error) throw error;
                 
                 stations = data || [];
+                
+                // Populate genre filter dropdown
+                populateGenreFilter();
                 
                 // Re-apply search filter if there's a search term
                 const searchTerm = stationSearch.value.trim();
@@ -2257,6 +2399,22 @@
             console.log('Total stations:', stations.length);
             const lowerQuery = query.toLowerCase();
             filteredStations = stations.filter(station => {
+                // First apply genre filter
+                if (currentGenreFilter) {
+                    let hasGenre = false;
+                    if (Array.isArray(station.genres)) {
+                        hasGenre = station.genres.some(g => 
+                            g.toLowerCase() === currentGenreFilter.toLowerCase()
+                        );
+                    } else if (typeof station.genres === 'string') {
+                        hasGenre = station.genres.toLowerCase().includes(currentGenreFilter.toLowerCase());
+                    }
+                    if (!hasGenre) return false;
+                }
+                
+                // Then apply search query if present
+                if (!query) return true;
+                
                 const nameMatch = station.name && station.name.toLowerCase().includes(lowerQuery);
                 
                 // Handle genres as array or string
@@ -2276,6 +2434,125 @@
                 return nameMatch || genresMatch;
             });
             console.log('Filtered stations:', filteredStations.length);
+            sortStations(); // Apply current sort after filtering
+        }
+        
+        // Populate genre filter dropdown
+        function populateGenreFilter() {
+            const genreSet = new Set();
+            const genreCounts = {};
+            
+            stations.forEach(station => {
+                if (Array.isArray(station.genres)) {
+                    station.genres.forEach(genre => {
+                        if (genre && genre.trim()) {
+                            genreSet.add(genre.trim());
+                            genreCounts[genre.trim()] = (genreCounts[genre.trim()] || 0) + 1;
+                        }
+                    });
+                } else if (typeof station.genres === 'string' && station.genres.trim()) {
+                    // Split by comma for string genres
+                    station.genres.split(',').forEach(genre => {
+                        const trimmedGenre = genre.trim();
+                        if (trimmedGenre) {
+                            genreSet.add(trimmedGenre);
+                            genreCounts[trimmedGenre] = (genreCounts[trimmedGenre] || 0) + 1;
+                        }
+                    });
+                }
+            });
+            
+            const sortedGenres = Array.from(genreSet).sort();
+            
+            // Build dropdown HTML
+            let dropdownHTML = `
+                <div class="filter-option active" data-genre="">
+                    <span class="filter-option-icon">🎵</span>
+                    <span>All Genres</span>
+                    <span class="genre-count">${stations.length}</span>
+                </div>
+            `;
+            
+            sortedGenres.forEach(genre => {
+                dropdownHTML += `
+                    <div class="filter-option" data-genre="${escapeHtml(genre)}">
+                        <span class="filter-option-icon">🎵</span>
+                        <span>${escapeHtml(genre)}</span>
+                        <span class="genre-count">${genreCounts[genre]}</span>
+                    </div>
+                `;
+            });
+            
+            genreDropdown.innerHTML = dropdownHTML;
+            
+            // Re-attach event listeners
+            genreDropdown.querySelectorAll('.filter-option').forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    // Update active state
+                    genreDropdown.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('active'));
+                    option.classList.add('active');
+                    
+                    // Update genre filter
+                    currentGenreFilter = option.dataset.genre;
+                    
+                    // Update button label
+                    genreLabel.textContent = option.dataset.genre || 'All Genres';
+                    
+                    // Close dropdown
+                    genreDropdown.classList.remove('active');
+                    
+                    // Apply filter
+                    filterStations(stationSearch.value);
+                });
+            });
+        }
+        
+        // Sort stations based on current sort method
+        async function sortStations() {
+            console.log('Sorting stations by:', currentSortMethod);
+            
+            switch(currentSortMethod) {
+                case 'name-asc':
+                    filteredStations.sort((a, b) => 
+                        (a.name || '').localeCompare(b.name || '')
+                    );
+                    break;
+                    
+                case 'name-desc':
+                    filteredStations.sort((a, b) => 
+                        (b.name || '').localeCompare(a.name || '')
+                    );
+                    break;
+                    
+                case 'most-played':
+                    const mostPlayed = await getMostPlayedStations(filteredStations.length);
+                    const mostPlayedIds = mostPlayed.map(s => s.id);
+                    filteredStations.sort((a, b) => {
+                        const indexA = mostPlayedIds.indexOf(a.id);
+                        const indexB = mostPlayedIds.indexOf(b.id);
+                        if (indexA === -1 && indexB === -1) return 0;
+                        if (indexA === -1) return 1;
+                        if (indexB === -1) return -1;
+                        return indexA - indexB;
+                    });
+                    break;
+                    
+                case 'recent':
+                    const recentStations = await getMostRecentStations(filteredStations.length);
+                    const recentIds = recentStations.map(s => s.id);
+                    filteredStations.sort((a, b) => {
+                        const indexA = recentIds.indexOf(a.id);
+                        const indexB = recentIds.indexOf(b.id);
+                        if (indexA === -1 && indexB === -1) return 0;
+                        if (indexA === -1) return 1;
+                        if (indexB === -1) return -1;
+                        return indexA - indexB;
+                    });
+                    break;
+            }
+            
             renderStationList();
         }
         
@@ -2437,6 +2714,43 @@
         stationSearch.addEventListener('input', (e) => {
             console.log('Search input event fired, value:', e.target.value);
             filterStations(e.target.value);
+        });
+        
+        // Genre dropdown toggle
+        genreBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            genreDropdown.classList.toggle('active');
+            sortDropdown.classList.remove('active'); // Close sort dropdown
+        });
+        
+        // Sort dropdown toggle
+        sortBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sortDropdown.classList.toggle('active');
+            genreDropdown.classList.remove('active'); // Close genre dropdown
+        });
+        
+        // Sort option selection
+        document.querySelectorAll('.filter-dropdown#sortDropdown .filter-option').forEach(option => {
+            option.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                
+                // Update active state
+                document.querySelectorAll('.filter-dropdown#sortDropdown .filter-option').forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                
+                // Update sort method
+                currentSortMethod = option.dataset.sort;
+                
+                // Update button label
+                sortLabel.textContent = option.textContent.trim();
+                
+                // Close dropdown
+                sortDropdown.classList.remove('active');
+                
+                // Apply sort
+                await sortStations();
+            });
         });
         
         // Quality selector
@@ -2998,8 +3312,10 @@
             if (!e.target.closest('.station-menu-btn') && 
                 !e.target.closest('.station-dropdown') &&
                 !e.target.closest('.playlist-menu-btn') &&
-                !e.target.closest('.playlist-dropdown')) {
-                document.querySelectorAll('.station-dropdown, .playlist-dropdown').forEach(dropdown => {
+                !e.target.closest('.playlist-dropdown') &&
+                !e.target.closest('.filter-btn') &&
+                !e.target.closest('.filter-dropdown')) {
+                document.querySelectorAll('.station-dropdown, .playlist-dropdown, .filter-dropdown').forEach(dropdown => {
                     dropdown.classList.remove('active');
                 });
             }
