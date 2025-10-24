@@ -1014,7 +1014,7 @@
         // Initialize Supabase client
         const SUPABASE_URL = 'https://zwrunupvlkhnwbylzizj.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3cnVudXB2bGtobndieWx6aXpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMTIxNzEsImV4cCI6MjA3NjY4ODE3MX0.WBTLcTNWgGZ-I6o_Dd7ObfS2avmJc_iiIEpDp8-VuQ4';
-        
+   
         const { createClient } = supabase;
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
@@ -1213,7 +1213,7 @@
         async function loadStations() {
             try {
                 const { data, error } = await supabaseClient
-                    .from('stations')
+                    .from('radio_stations')
                     .select('*')
                     .order('name');
                 
@@ -1234,7 +1234,7 @@
                     .from('playlists')
                     .select(`
                         *,
-                        playlist_stations (
+                        playlist_items (
                             station_id
                         )
                     `)
@@ -1273,7 +1273,7 @@
         async function addStationToPlaylist(playlistId, stationId) {
             try {
                 const { data, error } = await supabaseClient
-                    .from('playlist_stations')
+                    .from('playlist_items')
                     .insert([{
                         playlist_id: playlistId,
                         station_id: stationId
@@ -1354,7 +1354,7 @@
             }
             
             playlistList.innerHTML = allPlaylists.map(playlist => {
-                const stationCount = playlist.playlist_stations ? playlist.playlist_stations.length : 0;
+                const stationCount = playlist.playlist_items ? playlist.playlist_items.length : 0;
                 return `
                     <div class="playlist-item" data-playlist-id="${playlist.id}">
                         <div class="playlist-item-header">
@@ -1378,15 +1378,15 @@
         async function loadPlaylistStations(playlistId) {
             try {
                 const { data, error } = await supabaseClient
-                    .from('playlist_stations')
+                    .from('playlist_items')
                     .select(`
-                        stations (*)
+                        radio_stations (*)
                     `)
                     .eq('playlist_id', playlistId);
                 
                 if (error) throw error;
                 
-                filteredStations = data.map(item => item.stations);
+                filteredStations = data.map(item => item.radio_stations);
                 currentView = 'playlist';
                 displayStations();
                 
