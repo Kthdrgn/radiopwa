@@ -91,17 +91,10 @@
             border-radius: 12px;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
-            cursor: pointer;
             transition: all 0.3s;
             display: flex;
             align-items: center;
             gap: 15px;
-        }
-        
-        .station-display:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.4);
-            transform: translateY(-2px);
         }
         
         .station-display-icon {
@@ -1003,19 +996,24 @@
 </head>
 <body>
     <div class="player-container">
-        <!-- Station display/selector -->
+        <!-- Station selector buttons -->
+        <div id="stationSelectorButtons" style="display: flex; gap: 15px; width: 100%;">
+            <button id="playlistsBtn" class="station-selector-btn" style="flex: 1;">
+                📚 My Playlists
+            </button>
+            <button id="browseStationsBtn" class="station-selector-btn" style="flex: 1;">
+                📻 Browse Stations
+            </button>
+        </div>
+        
+        <!-- Currently playing station display -->
         <div id="stationDisplay" class="station-display" style="display: none;">
             <img id="stationDisplayIcon" class="station-display-icon" src="" alt="">
             <div class="station-display-info">
                 <div id="stationDisplayName" class="station-display-name"></div>
                 <div id="stationDisplayGenres" class="station-display-genres"></div>
             </div>
-            <div class="station-display-change"></div>
         </div>
-        
-        <button id="stationSelector" class="station-selector-btn">
-            📻 Select Station
-        </button>
         
         <!-- Album artwork -->
         <div class="artwork-container" id="artworkContainer">
@@ -1063,12 +1061,12 @@
         </div>
     </div>
     
-    <!-- Station Selector Modal -->
-    <div id="stationModal" class="modal-overlay">
+    <!-- Playlists Modal -->
+    <div id="playlistsModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Select Station</h2>
-                <button class="modal-close" id="closeStationModal">&times;</button>
+                <h2 class="modal-title">My Playlists</h2>
+                <button class="modal-close" id="closePlaylistsModal">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- Playlists Section -->
@@ -1081,7 +1079,18 @@
                     </div>
                     <div class="playlists-list" id="playlistsList"></div>
                 </div>
-                
+            </div>
+        </div>
+    </div>
+    
+    <!-- Browse Stations Modal -->
+    <div id="browseStationsModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Browse Stations</h2>
+                <button class="modal-close" id="closeBrowseStationsModal">&times;</button>
+            </div>
+            <div class="modal-body">
                 <!-- Search -->
                 <div class="search-controls">
                     <input 
@@ -1301,13 +1310,17 @@
         let currentGenreFilter = ''; // Empty string means all genres
         
         // DOM Elements
-        const stationSelector = document.getElementById('stationSelector');
+        const playlistsBtn = document.getElementById('playlistsBtn');
+        const browseStationsBtn = document.getElementById('browseStationsBtn');
+        const stationSelectorButtons = document.getElementById('stationSelectorButtons');
         const stationDisplay = document.getElementById('stationDisplay');
         const stationDisplayIcon = document.getElementById('stationDisplayIcon');
         const stationDisplayName = document.getElementById('stationDisplayName');
         const stationDisplayGenres = document.getElementById('stationDisplayGenres');
-        const stationModal = document.getElementById('stationModal');
-        const closeStationModal = document.getElementById('closeStationModal');
+        const playlistsModal = document.getElementById('playlistsModal');
+        const closePlaylistsModal = document.getElementById('closePlaylistsModal');
+        const browseStationsModal = document.getElementById('browseStationsModal');
+        const closeBrowseStationsModal = document.getElementById('closeBrowseStationsModal');
         const stationList = document.getElementById('stationList');
         const stationSearch = document.getElementById('stationSearch');
         const playBtn = document.getElementById('playBtn');
@@ -1546,6 +1559,7 @@
         // Load stations from Supabase
         async function loadStations(forceRefresh = false) {
             try {
+                console.log('loadStations called');
                 const { data, error } = await supabase
                     .from('radio_stations')
                     .select('*')
@@ -1554,15 +1568,18 @@
                 if (error) throw error;
                 
                 stations = data || [];
+                console.log('Loaded stations:', stations.length);
                 
                 // Populate genre filter dropdown
                 populateGenreFilter();
                 
                 // Re-apply search filter if there's a search term
-                const searchTerm = stationSearch.value.trim();
+                const searchTerm = stationSearch ? stationSearch.value.trim() : '';
                 if (searchTerm) {
+                    console.log('Applying search filter:', searchTerm);
                     filterStations(searchTerm);
                 } else {
+                    console.log('No search term, setting filteredStations');
                     filteredStations = [...stations];
                     renderStationList();
                 }
@@ -1981,6 +1998,17 @@
         
         // Render station list
         function renderStationList() {
+            console.log('renderStationList called', {
+                stationList: stationList,
+                filteredStationsLength: filteredStations.length,
+                stationsLength: stations.length
+            });
+            
+            if (!stationList) {
+                console.error('stationList element not found!');
+                return;
+            }
+            
             if (filteredStations.length === 0) {
                 stationList.innerHTML = `
                     <div class="empty-state">
@@ -2192,9 +2220,10 @@
             // Track the station click
             trackStationClick(station.id);
             
-            // Update display
+            // Update display - keep it visible along with buttons
             stationDisplay.style.display = 'flex';
-            stationSelector.style.display = 'none';
+            // Don't hide the selector buttons anymore
+            // stationSelectorButtons.style.display = 'none';
             stationDisplayIcon.src = station.icon_url || '';
             stationDisplayIcon.style.display = station.icon_url ? 'block' : 'none';
             stationDisplayName.textContent = station.name;
@@ -2216,7 +2245,8 @@
             }
 
             // Close modals
-            stationModal.classList.remove('active');
+            browseStationsModal.classList.remove('active');
+            playlistsModal.classList.remove('active');
             playlistModal.classList.remove('active');
             
             // Re-render lists to update selected state
@@ -2277,7 +2307,7 @@
             playlistModalTitle.textContent = currentPlaylist.name;
             loadPlaylistStations(id);
             
-            stationModal.classList.remove('active');
+            playlistsModal.classList.remove('active');
             playlistModal.classList.add('active');
         }
         
@@ -2581,20 +2611,43 @@
         // EVENT LISTENERS
         // ======================
         
-        // Open station modal
-        stationSelector.addEventListener('click', () => {
-            stationModal.classList.add('active');
+        // Open playlists modal
+        playlistsBtn.addEventListener('click', () => {
+            playlistsModal.classList.add('active');
             loadPlaylists();
         });
         
-        stationDisplay.addEventListener('click', () => {
-            stationModal.classList.add('active');
-            loadPlaylists();
+        // Open browse stations modal
+        browseStationsBtn.addEventListener('click', () => {
+            console.log('Opening browse stations modal', {
+                stationsLength: stations.length,
+                filteredStationsLength: filteredStations.length
+            });
+            browseStationsModal.classList.add('active');
+            // Ensure stations are displayed
+            if (stations.length > 0) {
+                if (filteredStations.length === 0) {
+                    console.log('Initializing filteredStations');
+                    filteredStations = [...stations];
+                }
+                console.log('Calling renderStationList');
+                renderStationList();
+            } else {
+                console.log('No stations loaded yet');
+            }
         });
         
-        // Close station modal
-        closeStationModal.addEventListener('click', () => {
-            stationModal.classList.remove('active');
+        // Station display is now just informational - no click functionality
+        // Removed click listener that opened browse stations modal
+        
+        // Close playlists modal
+        closePlaylistsModal.addEventListener('click', () => {
+            playlistsModal.classList.remove('active');
+        });
+        
+        // Close browse stations modal
+        closeBrowseStationsModal.addEventListener('click', () => {
+            browseStationsModal.classList.remove('active');
         });
         
         // Close playlist modal
@@ -2603,10 +2656,10 @@
             currentPlaylist = null;
         });
         
-        // Back to stations
+        // Back to stations (from playlist detail view)
         backToStations.addEventListener('click', () => {
             playlistModal.classList.remove('active');
-            stationModal.classList.add('active');
+            playlistsModal.classList.add('active');
             currentPlaylist = null;
         });
         
@@ -2790,7 +2843,7 @@
         });
         
         // Close modals on overlay click
-        [stationModal, playlistModal, playlistFormModal, stationFormModal].forEach(modal => {
+        [playlistsModal, browseStationsModal, playlistModal, playlistFormModal, stationFormModal].forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.classList.remove('active');
@@ -3293,6 +3346,9 @@
         // INITIALIZATION
         // ======================
         
+        console.log('=== INITIALIZATION STARTING ===');
+        console.log('Supabase initialized:', !!supabase);
+        
         // Initialize quality buttons as disabled until station is selected
         document.querySelectorAll('.quality-option').forEach(option => {
             if (option.dataset.quality !== 'standard') {
@@ -3300,9 +3356,13 @@
             }
         });
         
+        console.log('About to call loadStations()');
+        
         // Load stations from Supabase on startup
         loadStations();
         loadPlaylists();
+        
+        console.log('loadStations() and loadPlaylists() called');
         
         // Setup Media Session handlers
         setupMediaSessionHandlers();
