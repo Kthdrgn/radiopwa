@@ -168,6 +168,7 @@
             text-align: center;
             width: 100%;
             padding: 0 20px;
+            position: relative;
         }
         
         .now-playing-label {
@@ -201,6 +202,171 @@
             font-size: 16px;
             color: rgba(255, 255, 255, 0.6);
             font-style: italic;
+        }
+        
+        /* Like button */
+        .like-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 6px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        
+        .like-btn:hover:not(.disabled) {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .like-btn.liked {
+            background: rgba(255, 59, 92, 0.2);
+            border-color: rgba(255, 59, 92, 0.6);
+            color: #ff3b5c;
+        }
+        
+        .like-btn.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        /* Liked tracks section in settings */
+        .liked-tracks-btn {
+            width: 100%;
+            padding: 15px;
+            background: rgba(102, 126, 234, 0.2);
+            border: 2px solid rgba(102, 126, 234, 0.5);
+            border-radius: 10px;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .liked-tracks-btn:hover {
+            background: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .liked-tracks-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .liked-track-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+        }
+        
+        .liked-track-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .liked-track-art {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .liked-track-info {
+            flex: 1;
+            text-align: left;
+            min-width: 0;
+        }
+        
+        .liked-track-title {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 4px;
+            color: white;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .liked-track-artist {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .liked-track-meta {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .unlike-btn {
+            padding: 8px 12px;
+            background: rgba(255, 59, 92, 0.2);
+            border: 2px solid rgba(255, 59, 92, 0.5);
+            border-radius: 8px;
+            color: #ff3b5c;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+        
+        .unlike-btn:hover {
+            background: rgba(255, 59, 92, 0.3);
+            transform: scale(1.1);
+        }
+        
+        .clear-all-likes-btn {
+            padding: 10px 20px;
+            background: rgba(255, 107, 107, 0.2);
+            border: 2px solid rgba(255, 107, 107, 0.5);
+            border-radius: 8px;
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+        
+        .clear-all-likes-btn:hover {
+            background: rgba(255, 107, 107, 0.3);
         }
         
         /* Controls */
@@ -1152,6 +1318,32 @@
                             Automatically fetch album artwork from iTunes when available.
                         </div>
                     </div>
+                    
+                    <!-- Liked Tracks Button -->
+                    <button class="liked-tracks-btn" id="viewLikedTracksBtn">
+                        ♥ View Liked Tracks
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Liked Tracks Modal -->
+    <div id="likedTracksModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Liked Tracks</h2>
+                <button class="modal-close" id="closeLikedTracksModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <button class="clear-all-likes-btn" id="clearAllLikesBtn" style="display: none;">
+                    Clear All Liked Tracks
+                </button>
+                <div class="liked-tracks-list" id="likedTracksList">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">♡</div>
+                        <div class="empty-state-text">No liked tracks yet. Like a track while listening to save it here!</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1398,6 +1590,14 @@
         let filteredStations = [];
         let playlists = [];
         let currentPlaylist = null;
+        
+        // Current track info for liked tracks feature
+        let currentTrack = {
+            title: null,
+            artist: null,
+            album: null,
+            artworkUrl: null
+        };
         let playlistStations = [];
         let selectedQuality = 'standard';
         let editingStationId = null;
@@ -1455,6 +1655,170 @@
         const playlistName = document.getElementById('playlistName');
         const playlistDescription = document.getElementById('playlistDescription');
         const cancelPlaylistForm = document.getElementById('cancelPlaylistForm');
+        
+        // Liked tracks elements
+        const viewLikedTracksBtn = document.getElementById('viewLikedTracksBtn');
+        const likedTracksModal = document.getElementById('likedTracksModal');
+        const closeLikedTracksModal = document.getElementById('closeLikedTracksModal');
+        const likedTracksList = document.getElementById('likedTracksList');
+        const clearAllLikesBtn = document.getElementById('clearAllLikesBtn');
+        
+        // ======================
+        // LIKED TRACKS FUNCTIONS
+        // ======================
+        
+        // Load liked tracks from localStorage
+        function loadLikedTracks() {
+            const stored = localStorage.getItem('likedTracks');
+            return stored ? JSON.parse(stored) : [];
+        }
+        
+        // Save liked tracks to localStorage
+        function saveLikedTracks(tracks) {
+            localStorage.setItem('likedTracks', JSON.stringify(tracks));
+        }
+        
+        // Check if current track is liked
+        function isCurrentTrackLiked() {
+            if (!currentTrack.title || !currentTrack.artist) return false;
+            const likedTracks = loadLikedTracks();
+            return likedTracks.some(track => 
+                track.title === currentTrack.title && 
+                track.artist === currentTrack.artist
+            );
+        }
+        
+        // Toggle like for current track
+        function toggleLikeTrack() {
+            if (!currentTrack.title || !currentTrack.artist) return;
+            
+            const likedTracks = loadLikedTracks();
+            const trackIndex = likedTracks.findIndex(track => 
+                track.title === currentTrack.title && 
+                track.artist === currentTrack.artist
+            );
+            
+            if (trackIndex >= 0) {
+                // Unlike
+                likedTracks.splice(trackIndex, 1);
+            } else {
+                // Like
+                const newLikedTrack = {
+                    title: currentTrack.title,
+                    artist: currentTrack.artist,
+                    album: currentTrack.album || '',
+                    artworkUrl: currentTrack.artworkUrl || '',
+                    station: currentStation ? currentStation.name : 'Unknown Station',
+                    timestamp: new Date().toISOString()
+                };
+                likedTracks.unshift(newLikedTrack);
+            }
+            
+            saveLikedTracks(likedTracks);
+            updateLikeButton();
+        }
+        
+        // Update like button state
+        function updateLikeButton() {
+            const likeBtn = document.getElementById('likeBtn');
+            if (!likeBtn) return;
+            
+            if (!currentTrack.title || !currentTrack.artist) {
+                likeBtn.classList.add('disabled');
+                likeBtn.innerHTML = '♡';
+                return;
+            }
+            
+            likeBtn.classList.remove('disabled');
+            
+            if (isCurrentTrackLiked()) {
+                likeBtn.classList.add('liked');
+                likeBtn.innerHTML = '♥';
+            } else {
+                likeBtn.classList.remove('liked');
+                likeBtn.innerHTML = '♡';
+            }
+        }
+        
+        // Display liked tracks in modal
+        function displayLikedTracks() {
+            const likedTracks = loadLikedTracks();
+            
+            if (likedTracks.length === 0) {
+                likedTracksList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">♡</div>
+                        <div class="empty-state-text">No liked tracks yet. Like a track while listening to save it here!</div>
+                    </div>
+                `;
+                clearAllLikesBtn.style.display = 'none';
+            } else {
+                clearAllLikesBtn.style.display = 'block';
+                likedTracksList.innerHTML = likedTracks.map((track, index) => {
+                    const date = new Date(track.timestamp);
+                    const timeAgo = getTimeAgo(date);
+                    
+                    return `
+                        <div class="liked-track-item">
+                            ${track.artworkUrl ? 
+                                `<img class="liked-track-art" src="${track.artworkUrl}" alt="${escapeHtml(track.title)}">` :
+                                `<div class="liked-track-art">♪</div>`
+                            }
+                            <div class="liked-track-info">
+                                <div class="liked-track-title">${escapeHtml(track.title)}</div>
+                                <div class="liked-track-artist">${escapeHtml(track.artist)}</div>
+                                <div class="liked-track-meta">
+                                    ${escapeHtml(track.station)} • ${timeAgo}
+                                </div>
+                            </div>
+                            <button class="unlike-btn" onclick="unlikeTrack(${index})">×</button>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+        
+        // Unlike a track by index
+        function unlikeTrack(index) {
+            const likedTracks = loadLikedTracks();
+            likedTracks.splice(index, 1);
+            saveLikedTracks(likedTracks);
+            displayLikedTracks();
+            updateLikeButton();
+        }
+        
+        // Clear all liked tracks
+        function clearAllLikedTracks() {
+            if (confirm('Are you sure you want to clear all liked tracks? This cannot be undone.')) {
+                saveLikedTracks([]);
+                displayLikedTracks();
+                updateLikeButton();
+            }
+        }
+        
+        // Helper function to get time ago string
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            
+            const intervals = {
+                year: 31536000,
+                month: 2592000,
+                week: 604800,
+                day: 86400,
+                hour: 3600,
+                minute: 60
+            };
+            
+            for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+                const interval = Math.floor(seconds / secondsInUnit);
+                if (interval >= 1) {
+                    return `${interval} ${unit}${interval === 1 ? '' : 's'} ago`;
+                }
+            }
+            
+            return 'Just now';
+        }
+
         
         // Station form elements
         const stationFormModal = document.getElementById('stationFormModal');
@@ -2800,6 +3164,25 @@
             }
         });
         
+        // Liked Tracks Modal event listeners
+        viewLikedTracksBtn.addEventListener('click', () => {
+            displayLikedTracks();
+            settingsModal.classList.remove('active');
+            likedTracksModal.classList.add('active');
+        });
+        
+        closeLikedTracksModal.addEventListener('click', () => {
+            likedTracksModal.classList.remove('active');
+        });
+        
+        likedTracksModal.addEventListener('click', (e) => {
+            if (e.target === likedTracksModal) {
+                likedTracksModal.classList.remove('active');
+            }
+        });
+        
+        clearAllLikesBtn.addEventListener('click', clearAllLikedTracks);
+        
         // Close playlist modal
         closePlaylistModal.addEventListener('click', () => {
             playlistModal.classList.remove('active');
@@ -3022,6 +3405,9 @@
                     <div class="no-metadata">No metadata available</div>
                 `;
                 displayStationIcon();
+                // Reset current track
+                currentTrack = { title: null, artist: null, album: null, artworkUrl: null };
+                updateLikeButton();
                 return;
             }
             
@@ -3065,12 +3451,21 @@
                 }
             }
             
+            // Update current track
+            currentTrack.title = title;
+            currentTrack.artist = artist;
+            currentTrack.album = album;
+            
             metadataDiv.innerHTML = `
                 <div class="now-playing-label">NOW PLAYING</div>
                 <div class="song-title">${escapeHtml(title)}</div>
                 ${artist ? `<div class="artist-name">${escapeHtml(artist)}</div>` : ''}
                 ${album ? `<div class="album-name">${escapeHtml(album)}</div>` : ''}
+                <button class="like-btn" id="likeBtn" onclick="toggleLikeTrack()">♡</button>
             `;
+            
+            // Update like button state
+            updateLikeButton();
             
             // Try to fetch album art
             fetchAlbumArt(title, artist);
@@ -3113,6 +3508,9 @@
                     if (artUrl) {
                         artUrl = artUrl.replace('100x100', '600x600');
                         
+                        // Store artwork URL in current track
+                        currentTrack.artworkUrl = artUrl;
+                        
                         const img = new Image();
                         img.onload = () => {
                             artworkContainer.innerHTML = `<img src="${artUrl}" alt="Album Art" class="album-art">`;
@@ -3129,6 +3527,7 @@
                 console.error('Error fetching album art from iTunes:', error);
             }
             
+            currentTrack.artworkUrl = null;
             displayStationIcon();
             updateMediaSession(title, artist, '', null);
         }
