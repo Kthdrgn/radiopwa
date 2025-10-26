@@ -35,6 +35,48 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
+        :root {
+            /* Dark theme (default) */
+            --bg-gradient-start: #1e1e1e;
+            --bg-gradient-end: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-tertiary: rgba(255, 255, 255, 0.6);
+            --text-quaternary: rgba(255, 255, 255, 0.5);
+            --border-color: var(--border-color);
+            --border-hover: rgba(255, 255, 255, 0.4);
+            --card-bg: rgba(255, 255, 255, 0.1);
+            --card-hover: rgba(255, 255, 255, 0.15);
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --modal-bg: #2d2d2d;
+            --modal-overlay: rgba(0, 0, 0, 0.7);
+            --input-bg: rgba(255, 255, 255, 0.05);
+            --input-border: rgba(255, 255, 255, 0.2);
+            --button-bg: rgba(255, 255, 255, 0.1);
+            --button-hover: rgba(255, 255, 255, 0.2);
+        }
+        
+        [data-theme="light"] {
+            /* Light theme */
+            --bg-gradient-start: #f5f7fa;
+            --bg-gradient-end: #e8ecf1;
+            --text-primary: #1a202c;
+            --text-secondary: #4a5568;
+            --text-tertiary: #718096;
+            --text-quaternary: #a0aec0;
+            --border-color: rgba(0, 0, 0, 0.15);
+            --border-hover: rgba(0, 0, 0, 0.3);
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --card-hover: rgba(255, 255, 255, 0.95);
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --modal-bg: #ffffff;
+            --modal-overlay: rgba(0, 0, 0, 0.5);
+            --input-bg: rgba(0, 0, 0, 0.03);
+            --input-border: rgba(0, 0, 0, 0.15);
+            --button-bg: rgba(0, 0, 0, 0.05);
+            --button-hover: rgba(0, 0, 0, 0.1);
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -43,13 +85,14 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
-            color: white;
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
         }
         
         .player-container {
@@ -65,21 +108,21 @@
         .station-selector-btn {
             width: 100%;
             padding: 15px 20px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid var(--border-color);
             border-radius: 12px;
             font-size: 16px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             backdrop-filter: blur(10px);
             cursor: pointer;
             text-align: center;
             transition: all 0.3s;
-            color: white;
+            color: var(--text-primary);
             font-weight: 500;
         }
         
         .station-selector-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.4);
+            background: var(--card-hover);
+            border-color: var(--border-hover);
             transform: translateY(-2px);
         }
         
@@ -87,9 +130,9 @@
         .station-display {
             width: 100%;
             padding: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid var(--border-color);
             border-radius: 12px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             backdrop-filter: blur(10px);
             transition: all 0.3s;
             display: flex;
@@ -102,7 +145,7 @@
             height: 60px;
             border-radius: 10px;
             object-fit: cover;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--button-bg);
             flex-shrink: 0;
         }
         
@@ -115,23 +158,23 @@
             font-size: 18px;
             font-weight: 700;
             margin-bottom: 6px;
-            color: white;
+            color: var(--text-primary);
         }
         
         .station-display-genres {
             font-size: 14px;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-tertiary);
         }
         
         .station-display-details {
             font-size: 13px;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-quaternary);
             margin-top: 4px;
         }
         
         .station-display-change {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-quaternary);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -145,7 +188,7 @@
             aspect-ratio: 1;
             border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 20px 60px var(--shadow-color);
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
@@ -176,7 +219,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 2px;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-tertiary);
             margin-bottom: 15px;
         }
         
@@ -184,23 +227,23 @@
             font-size: 24px;
             font-weight: 700;
             margin-bottom: 8px;
-            color: white;
+            color: var(--text-primary);
         }
         
         .artist-name {
             font-size: 18px;
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--text-secondary);
             margin-bottom: 6px;
         }
         
         .album-name {
             font-size: 16px;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-quaternary);
         }
         
         .no-metadata {
             font-size: 16px;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-tertiary);
             font-style: italic;
         }
         
@@ -210,9 +253,9 @@
             top: 0;
             right: 0;
             padding: 6px 10px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid var(--border-color);
             border-radius: 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             cursor: pointer;
             font-size: 14px;
             transition: all 0.3s;
@@ -224,8 +267,8 @@
         }
         
         .like-btn:hover:not(.disabled) {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.5);
+            background: var(--button-hover);
+            border-color: var(--text-quaternary);
             transform: scale(1.05);
         }
         
@@ -248,7 +291,7 @@
             background: rgba(102, 126, 234, 0.2);
             border: 2px solid rgba(102, 126, 234, 0.5);
             border-radius: 10px;
-            color: white;
+            color: var(--text-primary);
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
@@ -279,14 +322,14 @@
             gap: 15px;
             padding: 15px;
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: var(--input-bg);
+            border: 2px solid var(--border-color);
             transition: all 0.3s;
         }
         
         .liked-track-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
+            background: var(--card-bg);
+            border-color: var(--border-color);
         }
         
         .liked-track-art {
@@ -312,7 +355,7 @@
             font-weight: 600;
             font-size: 15px;
             margin-bottom: 4px;
-            color: white;
+            color: var(--text-primary);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -320,7 +363,7 @@
         
         .liked-track-artist {
             font-size: 13px;
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--text-secondary);
             margin-bottom: 2px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -329,7 +372,7 @@
         
         .liked-track-meta {
             font-size: 11px;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-quaternary);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -391,7 +434,7 @@
         
         .btn-play {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            color: var(--text-primary);
         }
         
         .btn-play:hover:not(:disabled) {
@@ -400,13 +443,13 @@
         }
         
         .btn-stop {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 2px solid var(--border-color);
         }
         
         .btn-stop:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--button-hover);
         }
         
         .btn:disabled {
@@ -423,7 +466,7 @@
             gap: 10px;
             margin-top: 10px;
             font-size: 14px;
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--text-secondary);
         }
         
         .status-dot {
@@ -466,7 +509,7 @@
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
-            color: white;
+            color: var(--text-primary);
             font-size: 24px;
             cursor: pointer;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
@@ -491,23 +534,91 @@
         
         .setting-item {
             padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--input-bg);
             border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
         }
         
         .setting-label {
             font-size: 14px;
             font-weight: 600;
-            color: white;
+            color: var(--text-primary);
             margin-bottom: 8px;
             display: block;
         }
         
         .setting-description {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-tertiary);
             margin-top: 8px;
+        }
+        
+        /* Theme toggle styles */
+        .theme-toggle-container {
+            margin-top: 10px;
+        }
+        
+        .theme-toggle-btn {
+            position: relative;
+            display: flex;
+            background: var(--input-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 50px;
+            padding: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 280px;
+        }
+        
+        .theme-toggle-btn:hover {
+            border-color: var(--border-hover);
+        }
+        
+        .theme-option {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+            cursor: pointer;
+        }
+        
+        .theme-icon {
+            font-size: 18px;
+        }
+        
+        .theme-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            transition: color 0.3s ease;
+        }
+        
+        .theme-option.active .theme-name {
+            color: var(--text-primary);
+        }
+        
+        .theme-slider {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: calc(50% - 4px);
+            height: calc(100% - 8px);
+            background: var(--card-hover);
+            border-radius: 50px;
+            transition: transform 0.3s ease;
+            z-index: 1;
+            box-shadow: 0 2px 8px var(--shadow-color);
+        }
+        
+        [data-theme="light"] .theme-slider {
+            transform: translateX(calc(100% + 4px));
         }
         
         /* Modal overlay */
@@ -518,7 +629,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: var(--modal-overlay);
             backdrop-filter: blur(5px);
             z-index: 1000;
             justify-content: center;
@@ -532,13 +643,13 @@
         
         /* Modal content */
         .modal-content {
-            background: #2d2d2d;
+            background: var(--modal-bg);
             border-radius: 20px;
             max-width: 500px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 20px 60px var(--shadow-color);
             animation: modalSlideIn 0.3s ease-out;
         }
         
@@ -555,7 +666,7 @@
         
         .modal-header {
             padding: 25px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -564,13 +675,13 @@
         .modal-title {
             font-size: 24px;
             font-weight: 700;
-            color: white;
+            color: var(--text-primary);
         }
         
         .modal-close {
             background: none;
             border: none;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-tertiary);
             font-size: 28px;
             cursor: pointer;
             padding: 0;
@@ -584,8 +695,8 @@
         }
         
         .modal-close:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
+            background: var(--card-bg);
+            color: var(--text-primary);
         }
         
         .modal-body {
@@ -601,22 +712,22 @@
         .search-input {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid var(--border-color);
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
+            background: var(--input-bg);
+            color: var(--text-primary);
             font-size: 14px;
             transition: all 0.2s;
         }
         
         .search-input:focus {
             outline: none;
-            border-color: rgba(255, 255, 255, 0.4);
+            border-color: var(--text-quaternary);
             background: rgba(255, 255, 255, 0.08);
         }
         
         .search-input::placeholder {
-            color: rgba(255, 255, 255, 0.4);
+            color: var(--text-quaternary);
         }
         
         /* Filter controls row */
@@ -634,10 +745,10 @@
         .filter-btn {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid var(--border-color);
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
+            background: var(--input-bg);
+            color: var(--text-primary);
             font-size: 14px;
             cursor: pointer;
             transition: all 0.2s;
@@ -664,7 +775,7 @@
             left: 0;
             right: 0;
             background: rgba(30, 30, 30, 0.98);
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid var(--border-color);
             border-radius: 10px;
             padding: 8px 0;
             max-height: 0;
@@ -692,12 +803,12 @@
         }
         
         .filter-option:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
         }
         
         .filter-option.active {
             background: rgba(102, 126, 234, 0.3);
-            color: white;
+            color: var(--text-primary);
         }
         
         .filter-option-icon {
@@ -707,7 +818,7 @@
         .genre-count {
             margin-left: auto;
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-quaternary);
         }
         
         /* Playlists section */
@@ -727,7 +838,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-tertiary);
         }
         
         .create-playlist-btn {
@@ -759,15 +870,15 @@
             gap: 12px;
             padding: 12px 16px;
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--input-bg);
             cursor: pointer;
             transition: all 0.2s;
             border: 2px solid transparent;
         }
         
         .playlist-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
+            background: var(--card-bg);
+            border-color: var(--border-color);
             transform: translateX(4px);
         }
         
@@ -784,7 +895,7 @@
         .playlist-name {
             font-size: 15px;
             font-weight: 600;
-            color: white;
+            color: var(--text-primary);
             margin-bottom: 2px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -793,13 +904,13 @@
         
         .playlist-count {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-quaternary);
         }
         
         .playlist-menu-btn {
             background: none;
             border: none;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-quaternary);
             font-size: 20px;
             cursor: pointer;
             padding: 4px 8px;
@@ -809,8 +920,8 @@
         }
         
         .playlist-menu-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
+            background: var(--card-bg);
+            color: var(--text-primary);
         }
         
         /* Station list */
@@ -826,15 +937,15 @@
             gap: 12px;
             padding: 12px 16px;
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--input-bg);
             cursor: pointer;
             transition: all 0.2s;
             border: 2px solid transparent;
         }
         
         .station-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
+            background: var(--card-bg);
+            border-color: var(--border-color);
             transform: translateX(4px);
         }
         
@@ -848,7 +959,7 @@
             height: 48px;
             border-radius: 8px;
             object-fit: cover;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             flex-shrink: 0;
         }
         
@@ -860,7 +971,7 @@
         .station-name {
             font-size: 15px;
             font-weight: 600;
-            color: white;
+            color: var(--text-primary);
             margin-bottom: 4px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -869,7 +980,7 @@
         
         .station-genres {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-quaternary);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -877,7 +988,7 @@
         
         .station-details {
             font-size: 11px;
-            color: rgba(255, 255, 255, 0.4);
+            color: var(--text-quaternary);
             margin-top: 2px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -887,7 +998,7 @@
         .station-menu-btn {
             background: none;
             border: none;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-quaternary);
             font-size: 20px;
             cursor: pointer;
             padding: 4px 8px;
@@ -897,8 +1008,8 @@
         }
         
         .station-menu-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
+            background: var(--card-bg);
+            color: var(--text-primary);
         }
         
         /* Dropdown menu */
@@ -909,7 +1020,7 @@
             right: 0;
             margin-top: 4px;
             background: #1e1e1e;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid var(--border-color);
             border-radius: 10px;
             min-width: 180px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
@@ -934,7 +1045,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            color: white;
+            color: var(--text-primary);
             font-size: 14px;
         }
         
@@ -947,7 +1058,7 @@
         }
         
         .dropdown-item:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
         }
         
         .dropdown-item.danger {
@@ -956,7 +1067,7 @@
         
         .dropdown-divider {
             height: 1px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
             margin: 4px 0;
         }
         
@@ -970,7 +1081,7 @@
             top: 0;
             margin-right: 4px;
             background: #1e1e1e;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid var(--border-color);
             border-radius: 10px;
             min-width: 180px;
             max-width: 250px;
@@ -999,12 +1110,12 @@
         }
         
         .dropdown-submenu-content::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--input-bg);
             border-radius: 10px;
         }
         
         .dropdown-submenu-content::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--button-hover);
             border-radius: 10px;
         }
         
@@ -1016,7 +1127,7 @@
         .empty-state {
             padding: 40px 20px;
             text-align: center;
-            color: rgba(255, 255, 255, 0.4);
+            color: var(--text-quaternary);
         }
         
         .empty-state-icon {
@@ -1048,10 +1159,10 @@
         .form-select {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid var(--border-color);
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
+            background: var(--input-bg);
+            color: var(--text-primary);
             font-size: 14px;
             font-family: inherit;
             transition: all 0.2s;
@@ -1102,7 +1213,7 @@
         
         .form-btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            color: var(--text-primary);
         }
         
         .form-btn-primary:hover {
@@ -1111,13 +1222,13 @@
         }
         
         .form-btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 2px solid var(--border-color);
         }
         
         .form-btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.15);
+            background: var(--card-hover);
         }
         
         /* Quality selector */
@@ -1134,26 +1245,26 @@
         .quality-option {
             flex: 1;
             padding: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid var(--border-color);
             border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--input-bg);
             cursor: pointer;
             text-align: center;
             transition: all 0.2s;
             font-size: 13px;
             font-weight: 600;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-tertiary);
         }
         
         .quality-option:hover {
-            border-color: rgba(255, 255, 255, 0.4);
-            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--text-quaternary);
+            background: var(--card-bg);
         }
         
         .quality-option.selected {
             border-color: #667eea;
             background: rgba(102, 126, 234, 0.2);
-            color: white;
+            color: var(--text-primary);
         }
         
         .quality-option.disabled {
@@ -1170,8 +1281,8 @@
             padding: 8px 12px;
             border: none;
             border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.7);
+            background: var(--input-bg);
+            color: var(--text-secondary);
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -1180,8 +1291,8 @@
         }
         
         .back-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
+            background: var(--card-bg);
+            color: var(--text-primary);
             transform: translateX(-2px);
         }
         
@@ -1191,7 +1302,7 @@
             width: 20px;
             height: 20px;
             border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
+            border-top-color: var(--text-primary);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
@@ -1276,7 +1387,7 @@
         
         <!-- Quality Selector -->
         <div class="quality-selector">
-            <label class="form-label" style="text-align: center; color: rgba(255, 255, 255, 0.6); font-size: 12px;">Stream Quality</label>
+            <label class="form-label" style="text-align: center; color: var(--text-tertiary); font-size: 12px;">Stream Quality</label>
             <div class="quality-options">
                 <div class="quality-option" data-quality="low">Low</div>
                 <div class="quality-option selected" data-quality="standard">Standard</div>
@@ -1316,6 +1427,26 @@
                         </div>
                         <div class="setting-description">
                             Automatically fetch album artwork from iTunes when available.
+                        </div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label class="setting-label">Theme</label>
+                        <div class="theme-toggle-container">
+                            <button class="theme-toggle-btn" id="themeToggle">
+                                <span class="theme-option" data-theme="dark">
+                                    <span class="theme-icon">🌙</span>
+                                    <span class="theme-name">Dark</span>
+                                </span>
+                                <span class="theme-option" data-theme="light">
+                                    <span class="theme-icon">☀️</span>
+                                    <span class="theme-name">Light</span>
+                                </span>
+                                <span class="theme-slider"></span>
+                            </button>
+                        </div>
+                        <div class="setting-description">
+                            Switch between dark and light theme.
                         </div>
                     </div>
                     
@@ -3163,6 +3294,39 @@
                 settingsModal.classList.remove('active');
             }
         });
+        
+        // Theme Toggle Functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        
+        // Load saved theme or default to dark
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        html.setAttribute('data-theme', savedTheme);
+        updateThemeToggleUI(savedTheme);
+        
+        // Theme toggle click handler
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeToggleUI(newTheme);
+        });
+        
+        // Update theme toggle UI based on current theme
+        function updateThemeToggleUI(theme) {
+            const darkOption = themeToggle.querySelector('[data-theme="dark"]');
+            const lightOption = themeToggle.querySelector('[data-theme="light"]');
+            
+            if (theme === 'dark') {
+                darkOption.classList.add('active');
+                lightOption.classList.remove('active');
+            } else {
+                darkOption.classList.remove('active');
+                lightOption.classList.add('active');
+            }
+        }
         
         // Liked Tracks Modal event listeners
         viewLikedTracksBtn.addEventListener('click', () => {
