@@ -90,7 +90,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 15px;
             color: var(--text-primary);
             transition: background 0.3s ease, color 0.3s ease;
         }
@@ -101,7 +101,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 30px;
+            gap: 15px;
         }
         
         /* Station selector button */
@@ -184,7 +184,7 @@
         /* Album art container */
         .artwork-container {
             width: 100%;
-            max-width: 400px;
+            max-width: 350px;
             aspect-ratio: 1;
             border-radius: 20px;
             overflow: hidden;
@@ -202,7 +202,7 @@
         }
         
         .album-art-placeholder {
-            font-size: 120px;
+            font-size: 100px;
             opacity: 0.5;
         }
         
@@ -210,7 +210,7 @@
         .metadata-section {
             text-align: center;
             width: 100%;
-            padding: 0 20px;
+            padding: 0 10px;
             position: relative;
         }
         
@@ -220,24 +220,24 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             color: var(--text-tertiary);
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         
         .song-title {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             color: var(--text-primary);
         }
         
         .artist-name {
-            font-size: 18px;
+            font-size: 16px;
             color: var(--text-secondary);
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         
         .album-name {
-            font-size: 16px;
+            font-size: 14px;
             color: var(--text-quaternary);
         }
         
@@ -262,7 +262,7 @@
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            color: rgba(255, 255, 255, 0.8);
+            color: var(--text-secondary);
             backdrop-filter: blur(10px);
         }
         
@@ -419,6 +419,44 @@
             justify-content: center;
             align-items: center;
             margin-top: 10px;
+            width: 100%;
+            position: relative;
+        }
+        
+        .controls-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Quality button (like button style) */
+        .quality-btn {
+            position: absolute;
+            right: 0;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            background: var(--card-bg);
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            backdrop-filter: blur(10px);
+            font-weight: 600;
+        }
+        
+        .quality-btn:hover {
+            background: var(--button-hover);
+            border-color: var(--text-quaternary);
+            transform: scale(1.05);
+        }
+        
+        .quality-btn.visible {
+            display: inline-flex;
         }
         
         .btn {
@@ -500,31 +538,6 @@
         }
         
         /* Settings button */
-        .settings-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: var(--text-primary);
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 999;
-        }
-        
-        .settings-btn:hover {
-            transform: scale(1.1) rotate(90deg);
-            box-shadow: 0 6px 30px rgba(102, 126, 234, 0.5);
-        }
-        
         /* Settings content */
         .settings-content {
             display: flex;
@@ -1232,45 +1245,60 @@
         }
         
         /* Quality selector */
-        .quality-selector {
-            margin-top: 15px;
-        }
-        
-        .quality-options {
+        /* Quality modal options */
+        .quality-options-modal {
             display: flex;
-            gap: 8px;
-            margin-top: 8px;
+            flex-direction: column;
+            gap: 12px;
         }
         
-        .quality-option {
-            flex: 1;
-            padding: 10px;
+        .quality-option-modal {
+            padding: 16px;
             border: 2px solid var(--border-color);
-            border-radius: 8px;
+            border-radius: 12px;
             background: var(--input-bg);
             cursor: pointer;
-            text-align: center;
-            transition: all 0.2s;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-tertiary);
+            transition: all 0.3s;
         }
         
-        .quality-option:hover {
-            border-color: var(--text-quaternary);
+        .quality-option-modal:hover {
+            border-color: var(--border-hover);
             background: var(--card-bg);
+            transform: translateX(4px);
         }
         
-        .quality-option.selected {
+        .quality-option-modal.selected {
             border-color: #667eea;
-            background: rgba(102, 126, 234, 0.2);
-            color: var(--text-primary);
+            background: rgba(102, 126, 234, 0.15);
         }
         
-        .quality-option.disabled {
+        .quality-option-modal.disabled {
             opacity: 0.3;
             cursor: not-allowed;
             pointer-events: none;
+        }
+        
+        .quality-option-main {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+        
+        .quality-option-icon {
+            font-size: 24px;
+        }
+        
+        .quality-option-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .quality-option-desc {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-left: 36px;
         }
         
         /* Back button */
@@ -1314,7 +1342,7 @@
         /* Responsive adjustments */
         @media (max-width: 600px) {
             .player-container {
-                gap: 20px;
+                gap: 12px;
             }
             
             .artwork-container {
@@ -1322,11 +1350,11 @@
             }
             
             .song-title {
-                font-size: 20px;
+                font-size: 18px;
             }
             
             .artist-name {
-                font-size: 16px;
+                font-size: 15px;
             }
             
             .btn {
@@ -1337,21 +1365,15 @@
             .modal-content {
                 margin: 0 10px;
             }
+            
+            body {
+                padding: 10px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="player-container">
-        <!-- Station selector buttons -->
-        <div id="stationSelectorButtons" style="display: flex; gap: 15px; width: 100%;">
-            <button id="playlistsBtn" class="station-selector-btn" style="flex: 1;">
-                📚 My Playlists
-            </button>
-            <button id="browseStationsBtn" class="station-selector-btn" style="flex: 1;">
-                📻 Browse Stations
-            </button>
-        </div>
-        
         <!-- Currently playing station display -->
         <div id="stationDisplay" class="station-display" style="display: none;">
             <img id="stationDisplayIcon" class="station-display-icon" src="" alt="">
@@ -1375,8 +1397,14 @@
         
         <!-- Player controls -->
         <div class="controls">
-            <button id="playBtn" class="btn btn-play" disabled>Play</button>
-            <button id="stopBtn" class="btn btn-stop" disabled>Stop</button>
+            <div class="controls-buttons">
+                <button id="playBtn" class="btn btn-play" disabled>Play</button>
+                <button id="stopBtn" class="btn btn-stop" disabled>Stop</button>
+            </div>
+            <button id="qualityBtn" class="quality-btn">
+                <span id="currentQuality">Standard</span>
+                <span style="font-size: 10px;">▼</span>
+            </button>
         </div>
         
         <!-- Status indicator -->
@@ -1385,19 +1413,31 @@
             <span id="statusText">Not connected</span>
         </div>
         
-        <!-- Quality Selector -->
-        <div class="quality-selector">
-            <label class="form-label" style="text-align: center; color: var(--text-tertiary); font-size: 12px;">Stream Quality</label>
-            <div class="quality-options">
-                <div class="quality-option" data-quality="low">Low</div>
-                <div class="quality-option selected" data-quality="standard">Standard</div>
-                <div class="quality-option" data-quality="high">High</div>
-            </div>
+        <!-- Station selector buttons (moved to bottom) -->
+        <div id="stationSelectorButtons" style="display: flex; gap: 15px; width: 100%;">
+            <button id="playlistsBtn" class="station-selector-btn" style="flex: 1;">
+                📚 My Playlists
+            </button>
+            <button id="browseStationsBtn" class="station-selector-btn" style="flex: 1;">
+                📻 Browse Stations
+            </button>
         </div>
+        
+        <!-- History buttons -->
+        <div style="display: flex; gap: 15px; width: 100%;">
+            <button id="recentStationsBtn" class="station-selector-btn" style="flex: 1;">
+                🕒 Most Recent
+            </button>
+            <button id="mostPlayedBtn" class="station-selector-btn" style="flex: 1;">
+                🔥 Most Played
+            </button>
+        </div>
+        
+        <!-- Settings Button -->
+        <button id="settingsBtn" class="station-selector-btn" style="max-width: 200px;">
+            ⚙️ Settings
+        </button>
     </div>
-    
-    <!-- Settings Button -->
-    <button id="settingsBtn" class="settings-btn" title="Settings">⚙️</button>
     
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal-overlay">
@@ -1454,6 +1494,41 @@
                     <button class="liked-tracks-btn" id="viewLikedTracksBtn">
                         ♥ View Liked Tracks
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quality Modal -->
+    <div id="qualityModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 350px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Stream Quality</h2>
+                <button class="modal-close" id="closeQualityModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="quality-options-modal">
+                    <div class="quality-option-modal" data-quality="low">
+                        <div class="quality-option-main">
+                            <span class="quality-option-icon">🔉</span>
+                            <span class="quality-option-name">Low Quality</span>
+                        </div>
+                        <div class="quality-option-desc">Best for slower connections</div>
+                    </div>
+                    <div class="quality-option-modal selected" data-quality="standard">
+                        <div class="quality-option-main">
+                            <span class="quality-option-icon">🔊</span>
+                            <span class="quality-option-name">Standard Quality</span>
+                        </div>
+                        <div class="quality-option-desc">Balanced quality and bandwidth</div>
+                    </div>
+                    <div class="quality-option-modal" data-quality="high">
+                        <div class="quality-option-main">
+                            <span class="quality-option-icon">📻</span>
+                            <span class="quality-option-name">High Quality</span>
+                        </div>
+                        <div class="quality-option-desc">Best audio quality (requires fast connection)</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2455,23 +2530,8 @@
         
         // Render playlists list
         function renderPlaylistsList() {
-            // Start with history options
-            let htmlContent = `
-                <div class="playlist-item history-item" data-action="recent">
-                    <div class="playlist-icon">🕒</div>
-                    <div class="playlist-info">
-                        <div class="playlist-name">Most Recent Stations</div>
-                        <div class="playlist-count">Your recently played</div>
-                    </div>
-                </div>
-                <div class="playlist-item history-item" data-action="played">
-                    <div class="playlist-icon">🔥</div>
-                    <div class="playlist-info">
-                        <div class="playlist-name">Most Played Stations</div>
-                        <div class="playlist-count">Your favorites</div>
-                    </div>
-                </div>
-            `;
+            // Start with empty content (history buttons moved to main page)
+            let htmlContent = '';
             
             if (playlists.length === 0) {
                 htmlContent += `
@@ -2509,38 +2569,6 @@
             }
             
             playlistsList.innerHTML = htmlContent;
-            
-            // Add event listeners for history items
-            document.querySelectorAll('.history-item').forEach(item => {
-                item.addEventListener('click', async (e) => {
-                    const action = item.dataset.action;
-                    if (action === 'recent') {
-                        const recentStations = await getMostRecentStations(10);
-                        if (recentStations.length === 0) {
-                            alert('No recent stations yet. Start listening to build your history!');
-                            return;
-                        }
-                        // Open in playlist modal
-                        playlistStations = recentStations;
-                        currentPlaylist = { id: 'recent', name: 'Most Recent Stations' };
-                        playlistModalTitle.textContent = 'Most Recent Stations';
-                        renderPlaylistStations();
-                        playlistModal.classList.add('active');
-                    } else if (action === 'played') {
-                        const playedStations = await getMostPlayedStations(10);
-                        if (playedStations.length === 0) {
-                            alert('No play history yet. Start listening to see your favorites!');
-                            return;
-                        }
-                        // Open in playlist modal
-                        playlistStations = playedStations;
-                        currentPlaylist = { id: 'played', name: 'Most Played Stations' };
-                        playlistModalTitle.textContent = 'Most Played Stations';
-                        renderPlaylistStations();
-                        playlistModal.classList.add('active');
-                    }
-                });
-            });
             
             // Add event listeners for playlist items
             document.querySelectorAll('.playlist-item').forEach(item => {
@@ -2894,13 +2922,17 @@
         
         // Update quality button availability based on station URLs
         function updateQualityButtons(station) {
-            const lowBtn = document.querySelector('.quality-option[data-quality="low"]');
-            const standardBtn = document.querySelector('.quality-option[data-quality="standard"]');
-            const highBtn = document.querySelector('.quality-option[data-quality="high"]');
+            const lowBtn = document.querySelector('.quality-option-modal[data-quality="low"]');
+            const standardBtn = document.querySelector('.quality-option-modal[data-quality="standard"]');
+            const highBtn = document.querySelector('.quality-option-modal[data-quality="high"]');
+            const qualityBtn = document.getElementById('qualityBtn');
+            
+            let hasMultipleQualities = false;
             
             // Enable/disable based on available URLs
             if (station.url_low) {
                 lowBtn.classList.remove('disabled');
+                hasMultipleQualities = true;
             } else {
                 lowBtn.classList.add('disabled');
                 if (selectedQuality === 'low') {
@@ -2908,6 +2940,7 @@
                     selectedQuality = 'standard';
                     standardBtn.classList.add('selected');
                     lowBtn.classList.remove('selected');
+                    document.getElementById('currentQuality').textContent = 'Standard';
                 }
             }
             
@@ -2916,6 +2949,7 @@
             
             if (station.url_high) {
                 highBtn.classList.remove('disabled');
+                hasMultipleQualities = true;
             } else {
                 highBtn.classList.add('disabled');
                 if (selectedQuality === 'high') {
@@ -2923,7 +2957,15 @@
                     selectedQuality = 'standard';
                     standardBtn.classList.add('selected');
                     highBtn.classList.remove('selected');
+                    document.getElementById('currentQuality').textContent = 'Standard';
                 }
+            }
+            
+            // Only show quality button if there are multiple quality options
+            if (hasMultipleQualities) {
+                qualityBtn.classList.add('visible');
+            } else {
+                qualityBtn.classList.remove('visible');
             }
         }
         
@@ -3265,6 +3307,36 @@
             }
         });
         
+        // Most Recent Stations button
+        document.getElementById('recentStationsBtn').addEventListener('click', async () => {
+            const recentStations = await getMostRecentStations(10);
+            if (recentStations.length === 0) {
+                alert('No recent stations yet. Start listening to build your history!');
+                return;
+            }
+            // Open in playlist modal
+            playlistStations = recentStations;
+            currentPlaylist = { id: 'recent', name: 'Most Recent Stations' };
+            playlistModalTitle.textContent = 'Most Recent Stations';
+            renderPlaylistStations();
+            playlistModal.classList.add('active');
+        });
+        
+        // Most Played Stations button
+        document.getElementById('mostPlayedBtn').addEventListener('click', async () => {
+            const playedStations = await getMostPlayedStations(10);
+            if (playedStations.length === 0) {
+                alert('No play history yet. Start listening to see your favorites!');
+                return;
+            }
+            // Open in playlist modal
+            playlistStations = playedStations;
+            currentPlaylist = { id: 'played', name: 'Most Played Stations' };
+            playlistModalTitle.textContent = 'Most Played Stations';
+            renderPlaylistStations();
+            playlistModal.classList.add('active');
+        });
+        
         // Station display is now just informational - no click functionality
         // Removed click listener that opened browse stations modal
         
@@ -3503,8 +3575,28 @@
             });
         });
         
-        // Quality selector
-        document.querySelectorAll('.quality-option').forEach(option => {
+        // Quality modal
+        const qualityBtn = document.getElementById('qualityBtn');
+        const qualityModal = document.getElementById('qualityModal');
+        const closeQualityModal = document.getElementById('closeQualityModal');
+        const currentQualityText = document.getElementById('currentQuality');
+        
+        qualityBtn.addEventListener('click', () => {
+            qualityModal.classList.add('active');
+        });
+        
+        closeQualityModal.addEventListener('click', () => {
+            qualityModal.classList.remove('active');
+        });
+        
+        qualityModal.addEventListener('click', (e) => {
+            if (e.target === qualityModal) {
+                qualityModal.classList.remove('active');
+            }
+        });
+        
+        // Quality option selection
+        document.querySelectorAll('.quality-option-modal').forEach(option => {
             option.addEventListener('click', () => {
                 // Don't allow selecting disabled options
                 if (option.classList.contains('disabled')) {
@@ -3513,15 +3605,27 @@
                 
                 // Check if this is already selected
                 if (option.classList.contains('selected')) {
+                    qualityModal.classList.remove('active');
                     return;
                 }
                 
                 const wasPlaying = isPlaying;
                 const newQuality = option.dataset.quality;
                 
-                document.querySelectorAll('.quality-option').forEach(opt => opt.classList.remove('selected'));
+                document.querySelectorAll('.quality-option-modal').forEach(opt => opt.classList.remove('selected'));
                 option.classList.add('selected');
                 selectedQuality = newQuality;
+                
+                // Update button text
+                const qualityNames = {
+                    'low': 'Low',
+                    'standard': 'Standard',
+                    'high': 'High'
+                };
+                currentQualityText.textContent = qualityNames[newQuality];
+                
+                // Close modal
+                qualityModal.classList.remove('active');
                 
                 // If player was playing, stop and restart with new quality
                 if (wasPlaying && currentStation && player) {
@@ -3540,7 +3644,7 @@
         });
         
         // Close modals on overlay click
-        [playlistsModal, browseStationsModal, playlistModal, playlistFormModal, stationFormModal].forEach(modal => {
+        [playlistsModal, browseStationsModal, playlistModal, playlistFormModal, stationFormModal, qualityModal].forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.classList.remove('active');
@@ -4062,8 +4166,8 @@
         console.log('=== INITIALIZATION STARTING ===');
         console.log('Supabase initialized:', !!supabase);
         
-        // Initialize quality buttons as disabled until station is selected
-        document.querySelectorAll('.quality-option').forEach(option => {
+        // Initialize quality modal options
+        document.querySelectorAll('.quality-option-modal').forEach(option => {
             if (option.dataset.quality !== 'standard') {
                 option.classList.add('disabled');
             }
