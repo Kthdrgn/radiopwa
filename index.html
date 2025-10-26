@@ -50,6 +50,7 @@
             --shadow-color: rgba(0, 0, 0, 0.5);
             --modal-bg: #2d2d2d;
             --modal-overlay: rgba(0, 0, 0, 0.7);
+            --dropdown-bg: #1e1e1e;
             --input-bg: rgba(255, 255, 255, 0.05);
             --input-border: rgba(255, 255, 255, 0.2);
             --button-bg: rgba(255, 255, 255, 0.1);
@@ -71,6 +72,7 @@
             --shadow-color: rgba(0, 0, 0, 0.1);
             --modal-bg: #ffffff;
             --modal-overlay: rgba(0, 0, 0, 0.5);
+            --dropdown-bg: #ffffff;
             --input-bg: rgba(0, 0, 0, 0.03);
             --input-border: rgba(0, 0, 0, 0.15);
             --button-bg: rgba(0, 0, 0, 0.05);
@@ -161,10 +163,6 @@
             color: var(--text-primary);
         }
         
-        .station-display-genres {
-            font-size: 14px;
-            color: var(--text-tertiary);
-        }
         
         .station-display-details {
             font-size: 13px;
@@ -480,6 +478,16 @@
             box-shadow: 0 6px 30px rgba(102, 126, 234, 0.5);
         }
         
+        .btn-pause {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: var(--text-primary);
+        }
+        
+        .btn-pause:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 6px 30px rgba(245, 87, 108, 0.5);
+        }
+        
         .btn-stop {
             background: var(--card-bg);
             color: var(--text-primary);
@@ -787,7 +795,7 @@
             top: calc(100% + 5px);
             left: 0;
             right: 0;
-            background: rgba(30, 30, 30, 0.98);
+            background: var(--dropdown-bg);
             border: 2px solid var(--border-color);
             border-radius: 10px;
             padding: 8px 0;
@@ -809,7 +817,7 @@
             cursor: pointer;
             transition: background 0.2s;
             font-size: 14px;
-            color: rgba(255, 255, 255, 0.9);
+            color: var(--text-primary);
             display: flex;
             align-items: center;
             gap: 10px;
@@ -1032,7 +1040,7 @@
             top: 100%;
             right: 0;
             margin-top: 4px;
-            background: #1e1e1e;
+            background: var(--dropdown-bg);
             border: 1px solid var(--border-color);
             border-radius: 10px;
             min-width: 180px;
@@ -1093,7 +1101,7 @@
             right: 100%;
             top: 0;
             margin-right: 4px;
-            background: #1e1e1e;
+            background: var(--dropdown-bg);
             border: 1px solid var(--border-color);
             border-radius: 10px;
             min-width: 180px;
@@ -1108,6 +1116,39 @@
             z-index: 101;
             white-space: normal;
             word-wrap: break-word;
+        }
+        
+        /* Mobile responsive: position submenu below parent on narrow screens */
+        @media (max-width: 600px) {
+            .dropdown-submenu-content {
+                position: fixed;
+                left: 50%;
+                top: auto;
+                bottom: 20px;
+                right: auto;
+                margin: 0;
+                transform: translateX(-50%) translateY(20px);
+                min-width: calc(100vw - 40px);
+                max-width: calc(100vw - 40px);
+            }
+            
+            .dropdown-submenu:hover .dropdown-submenu-content,
+            .dropdown-submenu.active .dropdown-submenu-content {
+                transform: translateX(-50%) translateY(0);
+            }
+            
+            /* Add backdrop for mobile submenu */
+            .dropdown-submenu.active::before {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 100;
+                backdrop-filter: blur(2px);
+            }
         }
         
         .dropdown-submenu:hover .dropdown-submenu-content,
@@ -1380,7 +1421,6 @@
             <div class="station-display-info">
                 <div id="stationDisplayName" class="station-display-name"></div>
                 <div id="stationDisplayDetails" class="station-display-details"></div>
-                <div id="stationDisplayGenres" class="station-display-genres"></div>
             </div>
         </div>
         
@@ -1398,8 +1438,11 @@
         <!-- Player controls -->
         <div class="controls">
             <div class="controls-buttons">
-                <button id="playBtn" class="btn btn-play" disabled>Play</button>
-                <button id="stopBtn" class="btn btn-stop" disabled>Stop</button>
+                <button id="playPauseBtn" class="btn btn-play" disabled>
+                    <span class="play-icon">▶</span>
+                    <span class="pause-icon" style="display: none;">⏸</span>
+                    <span class="btn-text">Play</span>
+                </button>
             </div>
             <button id="qualityBtn" class="quality-btn">
                 <span id="currentQuality">Standard</span>
@@ -1818,7 +1861,6 @@
         const stationDisplay = document.getElementById('stationDisplay');
         const stationDisplayIcon = document.getElementById('stationDisplayIcon');
         const stationDisplayName = document.getElementById('stationDisplayName');
-        const stationDisplayGenres = document.getElementById('stationDisplayGenres');
         const playlistsModal = document.getElementById('playlistsModal');
         const closePlaylistsModal = document.getElementById('closePlaylistsModal');
         const browseStationsModal = document.getElementById('browseStationsModal');
@@ -1828,8 +1870,10 @@
         const closeSettingsModal = document.getElementById('closeSettingsModal');
         const stationList = document.getElementById('stationList');
         const stationSearch = document.getElementById('stationSearch');
-        const playBtn = document.getElementById('playBtn');
-        const stopBtn = document.getElementById('stopBtn');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = playPauseBtn.querySelector('.play-icon');
+        const pauseIcon = playPauseBtn.querySelector('.pause-icon');
+        const btnText = playPauseBtn.querySelector('.btn-text');
         const artworkContainer = document.getElementById('artworkContainer');
         const metadataDiv = document.getElementById('metadataSection');
         const statusDot = document.getElementById('statusDot');
@@ -2736,6 +2780,13 @@
                         submenu.classList.toggle('active');
                     }
                 });
+                
+                // Close submenu when clicking on backdrop (mobile)
+                submenu.addEventListener('click', (e) => {
+                    if (e.target === submenu && submenu.classList.contains('active')) {
+                        submenu.classList.remove('active');
+                    }
+                });
             });
             
             // Add event listeners for dropdown actions
@@ -2872,11 +2923,6 @@
             stationDisplayIcon.style.display = station.icon_url ? 'block' : 'none';
             stationDisplayName.textContent = station.name;
             
-            // Handle genres as array or string
-            const genresDisplay = station.genres && Array.isArray(station.genres)
-                ? station.genres.join(', ')
-                : (station.genres || 'No genres');
-            stationDisplayGenres.textContent = genresDisplay;
             
             // Display call letters and frequency
             const detailsParts = [];
@@ -2893,7 +2939,7 @@
             // Update quality button availability
             updateQualityButtons(station);
             
-            playBtn.disabled = false;
+            playPauseBtn.disabled = false;
 
             // Stop current stream if playing before starting new one
             if (player) {
@@ -2914,7 +2960,7 @@
 
             // Automatically start playing the station
             setTimeout(() => {
-                playBtn.click();
+                playPauseBtn.click();
             }, 100);
 
 
@@ -3637,7 +3683,7 @@
                     
                     // Wait a moment for the stop to complete, then start new stream
                     setTimeout(() => {
-                        playBtn.click();
+                        playPauseBtn.click();
                     }, 200);
                 }
             });
@@ -3676,6 +3722,15 @@
                 // Reset current track
                 currentTrack = { title: null, artist: null, album: null, artworkUrl: null };
                 updateLikeButton();
+                // Update media session with station info when no metadata
+                if (currentStation) {
+                    updateMediaSession(
+                        currentStation.name,
+                        '',
+                        '',
+                        currentStation.icon_url
+                    );
+                }
                 return;
             }
             
@@ -3864,7 +3919,7 @@
                     if (player) {
                         player.play().catch(err => console.error('Play error:', err));
                     } else {
-                        playBtn.click();
+                        playPauseBtn.click();
                     }
                 });
                 
@@ -3881,7 +3936,7 @@
                         const currentIndex = stations.findIndex(s => s.id === currentStation.id);
                         const nextIndex = (currentIndex + 1) % stations.length;
                         selectStation(stations[nextIndex]);
-                        setTimeout(() => playBtn.click(), 500);
+                        setTimeout(() => playPauseBtn.click(), 500);
                     }
                 });
                 
@@ -3890,7 +3945,7 @@
                         const currentIndex = stations.findIndex(s => s.id === currentStation.id);
                         const prevIndex = currentIndex > 0 ? currentIndex - 1 : stations.length - 1;
                         selectStation(stations[prevIndex]);
-                        setTimeout(() => playBtn.click(), 500);
+                        setTimeout(() => playPauseBtn.click(), 500);
                     }
                 });
             }
@@ -3960,6 +4015,15 @@
                                     <div class="now-playing-label">NOW PLAYING</div>
                                     <div class="no-metadata">HLS stream - metadata not available</div>
                                 `;
+                                // Update media session with station info for HLS streams
+                                if (currentStation) {
+                                    updateMediaSession(
+                                        currentStation.name,
+                                        '',
+                                        '',
+                                        currentStation.icon_url
+                                    );
+                                }
                                 resolve();
                             })
                             .catch(reject);
@@ -3986,6 +4050,15 @@
                                 <div class="now-playing-label">NOW PLAYING</div>
                                 <div class="no-metadata">HLS stream - metadata not available</div>
                             `;
+                            // Update media session with station info for HLS streams
+                            if (currentStation) {
+                                updateMediaSession(
+                                    currentStation.name,
+                                    '',
+                                    '',
+                                    currentStation.icon_url
+                                );
+                            }
                             resolve();
                         })
                         .catch(reject);
@@ -3995,8 +4068,41 @@
             });
         }
         
-        // Play button handler
-        playBtn.addEventListener('click', async () => {
+        // Function to update button state
+        function updatePlayPauseButton(playing) {
+            if (playing) {
+                playPauseBtn.classList.remove('btn-play');
+                playPauseBtn.classList.add('btn-pause');
+                playIcon.style.display = 'none';
+                pauseIcon.style.display = 'inline';
+                btnText.textContent = 'Pause';
+            } else {
+                playPauseBtn.classList.remove('btn-pause');
+                playPauseBtn.classList.add('btn-play');
+                playIcon.style.display = 'inline';
+                pauseIcon.style.display = 'none';
+                btnText.textContent = 'Play';
+            }
+        }
+        
+        // Play/Pause button handler
+        playPauseBtn.addEventListener('click', async () => {
+            // If playing, stop
+            if (isPlaying) {
+                stopAllPlayers();
+                isPlaying = false;
+                updateStatus('Stopped', 'stopped');
+                playPauseBtn.disabled = false;
+                updatePlayPauseButton(false);
+                displayStationIcon();
+                metadataDiv.innerHTML = `
+                    <div class="now-playing-label">NOW PLAYING</div>
+                    <div class="no-metadata">Select a station to start streaming</div>
+                `;
+                return;
+            }
+            
+            // If not playing, start playing
             const rawUrl = currentStation 
                 ? (selectedQuality === 'low' && currentStation.url_low ? currentStation.url_low : 
                    selectedQuality === 'high' && currentStation.url_high ? currentStation.url_high : currentStation.url)
@@ -4010,8 +4116,7 @@
             // Stop any existing players
             stopAllPlayers();
             
-            playBtn.disabled = true;
-            stopBtn.disabled = false;
+            playPauseBtn.disabled = true;
             updateStatus('Connecting...', 'loading');
             artworkContainer.innerHTML = `<div class="album-art-placeholder">🔄</div>`;
             metadataDiv.innerHTML = `
@@ -4028,8 +4133,8 @@
                 } catch (error) {
                     console.error('HLS playback failed:', error);
                     updateStatus('Error: Unable to play HLS stream', 'error');
-                    playBtn.disabled = false;
-                    stopBtn.disabled = true;
+                    playPauseBtn.disabled = false;
+                    updatePlayPauseButton(false);
                     return;
                 }
             }
@@ -4087,13 +4192,24 @@
                                 ? 'Playing (no metadata available)'
                                 : 'Playing';
                             updateStatus(statusMsg, 'playing');
+                            updatePlayPauseButton(true);
+                            playPauseBtn.disabled = false;
+                            // Update media session with station info when starting stream
+                            if (currentStation && attempt.metadata.length === 0) {
+                                updateMediaSession(
+                                    currentStation.name,
+                                    '',
+                                    '',
+                                    currentStation.icon_url
+                                );
+                            }
                         },
                         
                         onStop: () => {
                             isPlaying = false;
                             updateStatus('Stopped', 'stopped');
-                            playBtn.disabled = false;
-                            stopBtn.disabled = true;
+                            playPauseBtn.disabled = false;
+                            updatePlayPauseButton(false);
                             displayStationIcon();
                             metadataDiv.innerHTML = `
                                 <div class="now-playing-label">NOW PLAYING</div>
@@ -4134,22 +4250,8 @@
             console.error('All connection attempts failed');
             isPlaying = false;
             updateStatus('Error: Unable to connect to stream. Try enabling/disabling CORS proxy.', 'error');
-            playBtn.disabled = false;
-            stopBtn.disabled = true;
-        });
-        
-        // Stop button handler
-        stopBtn.addEventListener('click', () => {
-            stopAllPlayers();
-            isPlaying = false;
-            updateStatus('Stopped', 'stopped');
-            playBtn.disabled = false;
-            stopBtn.disabled = true;
-            displayStationIcon();
-            metadataDiv.innerHTML = `
-                <div class="now-playing-label">NOW PLAYING</div>
-                <div class="no-metadata">Select a station to start streaming</div>
-            `;
+            playPauseBtn.disabled = false;
+            updatePlayPauseButton(false);
         });
         
         // Allow Enter key to search
@@ -4194,6 +4296,10 @@
                 !e.target.closest('.filter-dropdown')) {
                 document.querySelectorAll('.station-dropdown, .playlist-dropdown, .filter-dropdown').forEach(dropdown => {
                     dropdown.classList.remove('active');
+                });
+                // Also close any open submenus
+                document.querySelectorAll('.dropdown-submenu').forEach(submenu => {
+                    submenu.classList.remove('active');
                 });
             }
         });
