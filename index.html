@@ -892,9 +892,20 @@
             padding: 12px 16px;
             border-radius: 10px;
             background: var(--input-bg);
-            cursor: pointer;
+            cursor: grab;
             transition: all 0.2s;
             border: 2px solid transparent;
+        }
+        
+        .playlist-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        
+        .playlist-item.drag-over {
+            border-color: rgba(102, 126, 234, 0.6);
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(1.02);
         }
         
         .playlist-item:hover {
@@ -903,9 +914,32 @@
             transform: translateX(4px);
         }
         
+        .playlist-item.dragging:hover {
+            transform: none;
+        }
+        
         .playlist-icon {
             font-size: 24px;
             flex-shrink: 0;
+        }
+        
+        .playlist-drag-handle {
+            font-size: 16px;
+            color: var(--text-quaternary);
+            cursor: grab;
+            user-select: none;
+            flex-shrink: 0;
+            padding: 0 4px;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        
+        .playlist-item:hover .playlist-drag-handle {
+            opacity: 1;
+        }
+        
+        .playlist-item.dragging .playlist-drag-handle {
+            cursor: grabbing;
         }
         
         .playlist-info {
@@ -2316,6 +2350,7 @@
                 const { data, error } = await supabase
                     .from('playlists')
                     .select('*, playlist_items(count)')
+                    .order('sort_order', { ascending: true, nullsFirst: false })
                     .order('created_at', { ascending: false });
                 
                 if (error) throw error;
@@ -2359,9 +2394,14 @@
             try {
                 console.log('Creating playlist with:', { name, description });
                 
+                // Get the max sort_order to add new playlist at the end
+                const maxSortOrder = playlists.length > 0 
+                    ? Math.max(...playlists.map(p => p.sort_order || 0))
+                    : -1;
+                
                 const { data, error } = await supabase
                     .from('playlists')
-                    .insert([{ name, description }])
+                    .insert([{ name, description, sort_order: maxSortOrder + 1 }])
                     .select();
                 
                 if (error) {
@@ -2588,7 +2628,8 @@
                 htmlContent += playlists.map(playlist => {
                     const count = playlist.playlist_items?.[0]?.count || 0;
                     return `
-                        <div class="playlist-item" data-id="${playlist.id}">
+                        <div class="playlist-item" data-id="${playlist.id}" draggable="true">
+                            <div class="playlist-drag-handle">⋮⋮</div>
                             <div class="playlist-icon">🎵</div>
                             <div class="playlist-info">
                                 <div class="playlist-name">${escapeHtml(playlist.name)}</div>
@@ -2623,6 +2664,9 @@
                     }
                 });
             });
+            
+            // Setup drag and drop for reordering playlists
+            setupPlaylistDragAndDrop();
             
             // Add event listeners for playlist menu buttons
             document.querySelectorAll('.playlist-menu-btn').forEach(btn => {
@@ -2660,6 +2704,89 @@
                     }
                 });
             });
+        }
+        
+        // Setup drag and drop for playlist reordering
+        function setupPlaylistDragAndDrop() {
+            const playlistItems = document.querySelectorAll('.playlist-item');
+            let draggedElement = null;
+            let draggedIndex = null;
+            
+            playlistItems.forEach((item, index) => {
+                // Drag start
+                item.addEventListener('dragstart', (e) => {
+                    draggedElement = item;
+                    draggedIndex = index;
+                    item.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', item.innerHTML);
+                });
+                
+                // Drag end
+                item.addEventListener('dragend', (e) => {
+                    item.classList.remove('dragging');
+                    // Remove drag-over class from all items
+                    document.querySelectorAll('.playlist-item').forEach(i => {
+                        i.classList.remove('drag-over');
+                    });
+                });
+                
+                // Drag over
+                item.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    
+                    if (item !== draggedElement) {
+                        item.classList.add('drag-over');
+                    }
+                });
+                
+                // Drag leave
+                item.addEventListener('dragleave', (e) => {
+                    item.classList.remove('drag-over');
+                });
+                
+                // Drop
+                item.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    item.classList.remove('drag-over');
+                    
+                    if (draggedElement !== item) {
+                        // Get the indices
+                        const dropIndex = Array.from(playlistItems).indexOf(item);
+                        
+                        // Reorder the playlists array
+                        const movedPlaylist = playlists.splice(draggedIndex, 1)[0];
+                        playlists.splice(dropIndex, 0, movedPlaylist);
+                        
+                        // Update sort orders and save to database
+                        await updatePlaylistOrder();
+                        
+                        // Re-render the list
+                        renderPlaylistsList();
+                    }
+                });
+            });
+        }
+        
+        // Update playlist order in database
+        async function updatePlaylistOrder() {
+            try {
+                // Update each playlist with its new sort_order
+                const updates = playlists.map((playlist, index) => {
+                    return supabase
+                        .from('playlists')
+                        .update({ sort_order: index })
+                        .eq('id', playlist.id);
+                });
+                
+                await Promise.all(updates);
+                console.log('Playlist order updated successfully');
+                
+            } catch (error) {
+                console.error('Error updating playlist order:', error);
+                alert('Failed to save playlist order');
+            }
         }
         
         // Render station list
