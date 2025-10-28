@@ -242,6 +242,13 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            cursor: pointer;
+        }
+        
+        .station-display:hover {
+            background: var(--card-hover);
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
         }
         
         .station-display-icon {
@@ -742,6 +749,31 @@
         
         [data-theme="light"] .theme-slider {
             transform: translateX(calc(100% + 4px));
+        }
+        
+        /* Reset theme button */
+        .reset-theme-btn {
+            width: 100%;
+            padding: 10px 15px;
+            margin-top: 10px;
+            background: rgba(102, 126, 234, 0.15);
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .reset-theme-btn:hover {
+            background: rgba(102, 126, 234, 0.25);
+            border-color: rgba(102, 126, 234, 0.5);
+            transform: translateY(-1px);
         }
         
         /* Modal overlay */
@@ -1653,6 +1685,7 @@
                 <div id="stationDisplayName" class="station-display-name"></div>
                 <div id="stationDisplayDetails" class="station-display-details"></div>
             </div>
+            <div class="station-display-change">CHANGE</div>
         </div>
         
         <!-- Album artwork -->
@@ -1771,6 +1804,9 @@
                         <div class="setting-description">
                             Switch between dark and light theme.
                         </div>
+                        <button class="reset-theme-btn" id="resetThemeBtn" style="display: none;">
+                            🔄 Reset to System Theme
+                        </button>
                     </div>
                     
                     <!-- Liked Tracks Button -->
@@ -2098,6 +2134,7 @@
         let filteredStations = [];
         let playlists = [];
         let currentPlaylist = null;
+        let lastOpenedModal = null; // Track the last modal that was opened
         
         // Current track info for liked tracks feature
         let currentTrack = {
@@ -3408,6 +3445,7 @@
             currentPlaylist = playlists.find(p => p.id === id);
             if (!currentPlaylist) return;
             
+            lastOpenedModal = { type: 'playlist', id: id };
             playlistModalTitle.textContent = currentPlaylist.name;
             loadPlaylistStations(id);
             
@@ -3717,6 +3755,7 @@
         
         // Open playlists modal
         playlistsBtn.addEventListener('click', () => {
+            lastOpenedModal = 'playlists';
             playlistsModal.classList.add('active');
             loadPlaylists();
         });
@@ -3727,6 +3766,7 @@
                 stationsLength: stations.length,
                 filteredStationsLength: filteredStations.length
             });
+            lastOpenedModal = 'browse';
             browseStationsModal.classList.add('active');
             // Ensure stations are displayed
             if (stations.length > 0) {
@@ -3751,6 +3791,7 @@
             // Open in playlist modal
             playlistStations = recentStations;
             currentPlaylist = { id: 'recent', name: 'Most Recent Stations' };
+            lastOpenedModal = 'recent';
             playlistModalTitle.textContent = 'Most Recent Stations';
             renderPlaylistStations();
             playlistModal.classList.add('active');
@@ -3766,13 +3807,52 @@
             // Open in playlist modal
             playlistStations = playedStations;
             currentPlaylist = { id: 'played', name: 'Most Played Stations' };
+            lastOpenedModal = 'played';
             playlistModalTitle.textContent = 'Most Played Stations';
             renderPlaylistStations();
             playlistModal.classList.add('active');
         });
         
-        // Station display is now just informational - no click functionality
-        // Removed click listener that opened browse stations modal
+        // Station display click - reopen last modal
+        stationDisplay.addEventListener('click', async () => {
+            if (!lastOpenedModal) return;
+            
+            if (lastOpenedModal === 'browse') {
+                browseStationsModal.classList.add('active');
+                if (stations.length > 0) {
+                    if (filteredStations.length === 0) {
+                        filteredStations = [...stations];
+                    }
+                    renderStationList();
+                }
+            } else if (lastOpenedModal === 'playlists') {
+                playlistsModal.classList.add('active');
+                loadPlaylists();
+            } else if (lastOpenedModal === 'recent') {
+                const recentStations = await getMostRecentStations(10);
+                if (recentStations.length > 0) {
+                    playlistStations = recentStations;
+                    currentPlaylist = { id: 'recent', name: 'Most Recent Stations' };
+                    playlistModalTitle.textContent = 'Most Recent Stations';
+                    renderPlaylistStations();
+                    playlistModal.classList.add('active');
+                }
+            } else if (lastOpenedModal === 'played') {
+                const playedStations = await getMostPlayedStations(10);
+                if (playedStations.length > 0) {
+                    playlistStations = playedStations;
+                    currentPlaylist = { id: 'played', name: 'Most Played Stations' };
+                    playlistModalTitle.textContent = 'Most Played Stations';
+                    renderPlaylistStations();
+                    playlistModal.classList.add('active');
+                }
+            } else if (lastOpenedModal.type === 'playlist') {
+                const playlist = playlists.find(p => p.id === lastOpenedModal.id);
+                if (playlist) {
+                    openPlaylist(lastOpenedModal.id);
+                }
+            }
+        });
         
         // Close playlists modal
         closePlaylistsModal.addEventListener('click', () => {
@@ -3803,12 +3883,41 @@
         
         // Theme Toggle Functionality
         const themeToggle = document.getElementById('themeToggle');
+        const resetThemeBtn = document.getElementById('resetThemeBtn');
         const html = document.documentElement;
         
-        // Load saved theme or default to dark
-        const savedTheme = localStorage.getItem('theme') || 'dark';
-        html.setAttribute('data-theme', savedTheme);
-        updateThemeToggleUI(savedTheme);
+        // Function to get system theme preference
+        function getSystemTheme() {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        
+        // Function to show/hide reset button
+        function updateResetButtonVisibility() {
+            const hasManualTheme = localStorage.getItem('theme');
+            if (hasManualTheme) {
+                resetThemeBtn.style.display = 'flex';
+            } else {
+                resetThemeBtn.style.display = 'none';
+            }
+        }
+        
+        // Load saved theme or use system preference
+        const savedTheme = localStorage.getItem('theme');
+        const initialTheme = savedTheme || getSystemTheme();
+        html.setAttribute('data-theme', initialTheme);
+        updateThemeToggleUI(initialTheme);
+        updateResetButtonVisibility();
+        
+        // Listen for system theme changes (only if user hasn't set a manual preference)
+        const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        darkModeMediaQuery.addEventListener('change', (e) => {
+            // Only auto-update if user hasn't manually set a theme
+            if (!localStorage.getItem('theme')) {
+                const systemTheme = e.matches ? 'dark' : 'light';
+                html.setAttribute('data-theme', systemTheme);
+                updateThemeToggleUI(systemTheme);
+            }
+        });
         
         // Theme toggle click handler
         themeToggle.addEventListener('click', () => {
@@ -3818,6 +3927,16 @@
             html.setAttribute('data-theme', newTheme);
             localStorage.setItem('theme', newTheme);
             updateThemeToggleUI(newTheme);
+            updateResetButtonVisibility();
+        });
+        
+        // Reset theme button click handler
+        resetThemeBtn.addEventListener('click', () => {
+            localStorage.removeItem('theme');
+            const systemTheme = getSystemTheme();
+            html.setAttribute('data-theme', systemTheme);
+            updateThemeToggleUI(systemTheme);
+            updateResetButtonVisibility();
         });
         
         // Update theme toggle UI based on current theme
