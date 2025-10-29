@@ -864,9 +864,15 @@
             margin-bottom: 10px;
         }
         
+        .search-input-container {
+            position: relative;
+            width: 100%;
+        }
+        
         .search-input {
             width: 100%;
             padding: 12px 16px;
+            padding-right: 45px; /* Make room for clear button */
             border: 2px solid var(--border-color);
             border-radius: 10px;
             background: var(--input-bg);
@@ -883,6 +889,31 @@
         
         .search-input::placeholder {
             color: var(--text-quaternary);
+        }
+        
+        .clear-search-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 50%;
+            background: var(--button-bg);
+            color: var(--text-secondary);
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .clear-search-btn:hover {
+            background: var(--button-hover);
+            color: var(--text-primary);
+            transform: translateY(-50%) scale(1.1);
         }
         
         /* Filter controls row */
@@ -1916,12 +1947,17 @@
             <div class="modal-body">
                 <!-- Search -->
                 <div class="search-controls">
-                    <input 
-                        type="text" 
-                        id="stationSearch" 
-                        class="search-input" 
-                        placeholder="Search stations..."
-                    >
+                    <div class="search-input-container">
+                        <input 
+                            type="text" 
+                            id="stationSearch" 
+                            class="search-input" 
+                            placeholder="Search stations..."
+                        >
+                        <button class="clear-search-btn" id="clearSearchBtn" style="display: none;" title="Clear search and filters">
+                            ✕
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Filter Controls -->
@@ -3676,6 +3712,14 @@
                     // Update button label
                     genreLabel.textContent = option.dataset.genre || 'All Genres';
                     
+                    // Show/hide clear button
+                    const clearBtn = document.getElementById('clearSearchBtn');
+                    if (currentGenreFilter !== '' || stationSearch.value.trim() !== '') {
+                        clearBtn.style.display = 'flex';
+                    } else {
+                        clearBtn.style.display = 'none';
+                    }
+                    
                     // Close dropdown
                     genreDropdown.classList.remove('active');
                     
@@ -4092,7 +4136,43 @@
         // Search input handler
         stationSearch.addEventListener('input', (e) => {
             console.log('Search input event fired, value:', e.target.value);
+            const clearBtn = document.getElementById('clearSearchBtn');
+            
+            // Show/hide clear button based on input
+            if (e.target.value.trim() !== '' || currentGenreFilter !== '') {
+                clearBtn.style.display = 'flex';
+            } else {
+                clearBtn.style.display = 'none';
+            }
+            
             filterStations(e.target.value);
+        });
+        
+        // Clear search button
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+        clearSearchBtn.addEventListener('click', () => {
+            // Clear search input
+            stationSearch.value = '';
+            
+            // Reset genre filter to "All Genres"
+            currentGenreFilter = '';
+            const genreLabel = document.getElementById('genreLabel');
+            genreLabel.textContent = 'All Genres';
+            
+            // Update active state in genre dropdown
+            document.querySelectorAll('.filter-dropdown#genreDropdown .filter-option').forEach(opt => {
+                if (opt.dataset.genre === '') {
+                    opt.classList.add('active');
+                } else {
+                    opt.classList.remove('active');
+                }
+            });
+            
+            // Hide clear button
+            clearSearchBtn.style.display = 'none';
+            
+            // Refilter stations
+            filterStations('');
         });
         
         // Genre dropdown toggle
