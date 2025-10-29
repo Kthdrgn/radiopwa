@@ -1,13 +1,17 @@
 // Service Worker for Radio Player PWA
-// This service worker adds cache clearing capability
+// This service worker adds cache clearing capability and smart caching strategies
 
-const CACHE_NAME = 'radio-player-v1';
+// Auto-versioning: Update this timestamp when you make changes to force cache refresh
+// Format: YYYYMMDD-HHMM or increment the number after each update
+const CACHE_VERSION = '20251029-001';
+const CACHE_NAME = `radio-player-v${CACHE_VERSION}`;
+
 const urlsToCache = [
     './',
-    './index.html',
     './manifest.json',
     './icons/icon-192x192.png',
     './icons/icon-512x512.png'
+    // Note: index.html is NOT pre-cached to ensure fresh content
 ];
 
 // Install event - cache resources
@@ -37,7 +41,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - smart caching strategy
 self.addEventListener('fetch', (event) => {
     // Don't cache Supabase API calls
     if (event.request.url.includes('supabase.co')) {
@@ -45,6 +49,35 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    const url = new URL(event.request.url);
+    const isHTMLRequest = url.pathname.endsWith('.html') ||
+                         url.pathname === '/' ||
+                         url.pathname === '/index.html';
+
+    // Network-first strategy for HTML files (always fetch fresh content)
+    if (isHTMLRequest) {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    // Cache the fresh HTML response for offline access
+                    if (response && response.status === 200) {
+                        const responseToCache = response.clone();
+                        caches.open(CACHE_NAME)
+                            .then((cache) => {
+                                cache.put(event.request, responseToCache);
+                            });
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    // If network fails, fall back to cached version
+                    return caches.match(event.request);
+                })
+        );
+        return;
+    }
+
+    // Cache-first strategy for static assets (CSS, JS, images, etc.)
     event.respondWith(
         caches.match(event.request)
             .then((response) => {
