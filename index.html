@@ -1753,7 +1753,10 @@
             <div class="status-dot" id="statusDot"></div>
             <span id="statusText">Not connected</span>
         </div>
-        
+
+        <!-- Audio element for playback with chromecast support -->
+        <audio id="mainAudioElement" controls crossorigin="anonymous" style="width: 100%; margin-top: 15px;"></audio>
+
         <!-- Navigation buttons (all in one row) -->
         <div style="display: flex; gap: 10px; width: 100%; justify-content: center;">
             <button id="settingsBtn" class="station-selector-btn icon-btn" title="Settings">
@@ -2166,7 +2169,7 @@
         let supabase;
         let player = null;
         let hlsPlayer = null;
-        let audioElement = null;
+        let audioElement = null; // Will be initialized to HTML element on page load
         let isPlaying = false;
         let isPaused = false; // Track pause state separately
         let currentStation = null;
@@ -4593,12 +4596,12 @@
         // Helper function to play HLS stream
         async function playHLSStream(streamUrl) {
             return new Promise((resolve, reject) => {
-                // Create audio element if it doesn't exist
+                // Use the HTML audio element (already initialized)
                 if (!audioElement) {
-                    audioElement = new Audio();
-                    audioElement.crossOrigin = 'anonymous';
+                    reject(new Error('Audio element not initialized'));
+                    return;
                 }
-                
+
                 if (Hls.isSupported()) {
                     hlsPlayer = new Hls({
                         enableWorker: true,
@@ -4795,13 +4798,14 @@
                     }
                     
                     player = new IcecastMetadataPlayer(streamUrl, {
+                        audioElement: audioElement, // Use the HTML audio element
                         metadataTypes: attempt.metadata,
                         enableLogging: false,
-                        
+
                         onMetadata: (metadata) => {
                             displayMetadata(metadata);
                         },
-                        
+
                         onPlay: () => {
                             isPlaying = true;
                             const statusMsg = attempt.metadata.length === 0 
@@ -4956,7 +4960,11 @@
         
         console.log('=== INITIALIZATION STARTING ===');
         console.log('Supabase initialized:', !!supabase);
-        
+
+        // Initialize audio element from DOM
+        audioElement = document.getElementById('mainAudioElement');
+        console.log('Audio element initialized:', !!audioElement);
+
         // Initialize quality modal options
         document.querySelectorAll('.quality-option-modal').forEach(option => {
             if (option.dataset.quality !== 'standard') {
