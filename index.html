@@ -775,7 +775,19 @@
             border-color: rgba(102, 126, 234, 0.5);
             transform: translateY(-1px);
         }
-        
+
+        /* Audio element styling */
+        #mainAudioElement {
+            width: 100%;
+            margin-top: 15px;
+            outline: none;
+            border-radius: 10px;
+        }
+
+        #mainAudioElement::-webkit-media-controls-panel {
+            background-color: var(--card-bg);
+        }
+
         /* Modal overlay */
         .modal-overlay {
             display: none;
@@ -1755,7 +1767,7 @@
         </div>
 
         <!-- Audio element for playback with chromecast support -->
-        <audio id="mainAudioElement" controls crossorigin="anonymous" style="width: 100%; margin-top: 15px;"></audio>
+        <audio id="mainAudioElement" controls crossorigin="anonymous" preload="none"></audio>
 
         <!-- Navigation buttons (all in one row) -->
         <div style="display: flex; gap: 10px; width: 100%; justify-content: center;">
@@ -4964,6 +4976,23 @@
         // Initialize audio element from DOM
         audioElement = document.getElementById('mainAudioElement');
         console.log('Audio element initialized:', !!audioElement);
+
+        // Ensure remote playback is enabled for chromecast
+        if (audioElement && audioElement.remote) {
+            audioElement.remote.watchAvailability((available) => {
+                console.log('Remote playback (Chromecast) available:', available);
+                if (available) {
+                    console.log('Cast devices detected! The cast button should appear in the audio controls three-dot menu.');
+                }
+            }).catch((err) => {
+                console.log('Remote playback API not supported:', err);
+            });
+        }
+
+        // Log when audio source is loaded
+        audioElement.addEventListener('loadedmetadata', () => {
+            console.log('Audio metadata loaded. Cast button should now be visible in controls if devices available.');
+        });
 
         // Initialize quality modal options
         document.querySelectorAll('.quality-option-modal').forEach(option => {
